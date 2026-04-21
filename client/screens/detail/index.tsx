@@ -1,0 +1,177 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
+import { Screen } from '@/components/Screen';
+import { FontAwesome6 } from '@expo/vector-icons';
+
+interface News {
+  id: number;
+  date: string;
+  title: string;
+  summary: string;
+  importance: number;
+  question?: string;
+  answer?: string;
+}
+
+export default function DetailScreen() {
+  const { id } = useSafeSearchParams<{ id: string }>();
+  const router = useSafeRouter();
+  const [news, setNews] = useState<News | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      fetchNewsDetail(parseInt(id));
+    }
+  }, [id]);
+
+  const fetchNewsDetail = async (newsId: number) => {
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/news/${newsId}`);
+      const data = await response.json();
+      setNews(data.data || null);
+    } catch (error) {
+      console.error('Error fetching news detail:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!news) return;
+
+    setGenerating(true);
+    try {
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/news/${news.id}/generate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newsId: news.id }),
+        }
+      );
+      const data = await response.json();
+      setNews({
+        ...news,
+        question: data.data.question,
+        answer: data.data.answer,
+      });
+    } catch (error) {
+      console.error('Error generating shenlun:', error);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Screen>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#111111" />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (!news) {
+    return (
+      <Screen>
+        <View className="flex-1 items-center justify-center px-4">
+          <Text className="text-center text-gray-500 dark:text-gray-400">新闻未找到</Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View className="px-4 pt-4 pb-6 border-b border-gray-200 dark:border-gray-700">
+          <TouchableOpacity onPress={() => router.back()} className="mb-4">
+            <View className="flex-row items-center">
+              <FontAwesome6 name="arrow-left" size={16} color="#888" />
+              <Text className="ml-2 text-sm text-gray-600 dark:text-gray-400">返回</Text>
+            </View>
+          </TouchableOpacity>
+          <View className="flex-row items-start mb-3">
+            <View className="w-8 h-8 rounded-full bg-gray-900 dark:bg-white items-center justify-center mr-3">
+              <Text className="text-sm font-bold text-white dark:text-gray-900">{news.importance}</Text>
+            </View>
+            <View className="flex-1">
+              <Text className="text-xs text-gray-500 dark:text-gray-400 font-medium mb-1">
+                {new Date(news.date).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </Text>
+            </View>
+          </View>
+          <Text className="text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+            {news.title}
+          </Text>
+        </View>
+
+        {/* Summary */}
+        <View className="px-4 py-6 border-b border-gray-200 dark:border-gray-700">
+          <View className="mb-3">
+            <Text className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              新闻摘要
+            </Text>
+            <Text className="text-base text-gray-900 dark:text-white leading-relaxed">
+              {news.summary}
+            </Text>
+          </View>
+        </View>
+
+        {/* Shenlun Section */}
+        <View className="px-4 py-6">
+          <Text className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
+            申论练习
+          </Text>
+
+          {!news.question && !news.answer ? (
+            <TouchableOpacity
+              onPress={handleGenerate}
+              disabled={generating}
+              className="bg-gray-900 dark:bg-white rounded-lg p-4 items-center justify-center"
+            >
+              {generating ? (
+                <ActivityIndicator color={news.answer ? '#111111' : '#FFFFFF'} />
+              ) : (
+                <Text className="text-white dark:text-gray-900 font-semibold">
+                  生成申论题目和答案
+                </Text>
+              )}
+            </TouchableOpacity>
+          ) : (
+            <View>
+              {/* Question */}
+              <View className="mb-6">
+                <Text className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  题目
+                </Text>
+                <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <Text className="text-base text-gray-900 dark:text-white leading-relaxed">
+                    {news.question}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Answer */}
+              <View>
+                <Text className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  参考答案
+                </Text>
+                <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <Text className="text-base text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap">
+                    {news.answer}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </Screen>
+  );
+}
