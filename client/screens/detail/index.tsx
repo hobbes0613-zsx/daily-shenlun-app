@@ -22,6 +22,9 @@ export default function DetailScreen() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [selectedSentence, setSelectedSentence] = useState<string | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -83,6 +86,12 @@ export default function DetailScreen() {
       .filter(s => s.length > 0);
   };
 
+  // 精确选择：将文本分割成字符
+  const splitIntoChars = (text: string): string[] => {
+    if (!text) return [];
+    return text.split('');
+  };
+
   const handleSentencePress = async (sentence: string) => {
     setSelectedSentence(sentence);
 
@@ -115,6 +124,69 @@ export default function DetailScreen() {
         },
       ]
     );
+  };
+
+  const handleCharPress = (index: number) => {
+    if (selectionStart === null) {
+      // 第一次点击，设置起始位置
+      setSelectionStart(index);
+    } else if (selectionEnd === null) {
+      // 第二次点击，设置结束位置
+      setSelectionEnd(index);
+    } else {
+      // 重新开始选择
+      setSelectionStart(index);
+      setSelectionEnd(null);
+    }
+  };
+
+  const handleSaveSelection = () => {
+    if (news && selectionStart !== null && selectionEnd !== null) {
+      const answer = news.answer || '';
+      const start = Math.min(selectionStart, selectionEnd);
+      const end = Math.max(selectionStart, selectionEnd) + 1;
+      const selectedText = answer.substring(start, end);
+
+      if (selectedText.trim()) {
+        Alert.alert(
+          '保存金句',
+          selectedText,
+          [
+            { text: '取消', style: 'cancel' },
+            {
+              text: '保存',
+              onPress: async () => {
+                try {
+                  const exists = await quoteService.isQuoteExist(selectedText);
+                  if (exists) {
+                    Alert.alert('提示', '该金句已保存');
+                    return;
+                  }
+
+                  await quoteService.addQuote({
+                    content: selectedText,
+                    newsId: news.id,
+                    newsTitle: news.title,
+                  });
+                  Alert.alert('成功', '金句已保存');
+                  setIsSelectionMode(false);
+                  setSelectionStart(null);
+                  setSelectionEnd(null);
+                } catch (error) {
+                  Alert.alert('错误', '保存失败');
+                }
+              },
+            },
+          ]
+        );
+      }
+    }
+  };
+
+  const handleCancelSelection = () => {
+    setIsSelectionMode(false);
+    setSelectionStart(null);
+    setSelectionEnd(null);
   };
 
   if (loading) {
@@ -215,31 +287,117 @@ export default function DetailScreen() {
                   <Text className="text-sm font-semibold text-gray-900 dark:text-white">
                     参考答案
                   </Text>
-                  <Text className="text-xs text-gray-500 dark:text-gray-400">
-                    点击句子可保存为金句
-                  </Text>
-                </View>
-                <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                  <View>
-                    {splitIntoSentences(news.answer || '').map((sentence, index) => (
+                  {!isSelectionMode ? (
+                    <View className="flex-row items-center gap-2">
                       <TouchableOpacity
-                        key={index}
-                        onPress={() => handleSentencePress(sentence)}
-                        activeOpacity={0.7}
-                        className="mb-2"
+                        onPress={() => setIsSelectionMode(true)}
+                        className="bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full"
                       >
-                        <Text
-                          className={`text-base leading-relaxed ${
-                            selectedSentence === sentence
-                              ? 'text-blue-600 dark:text-blue-400 underline'
-                              : 'text-gray-900 dark:text-white'
-                          }`}
-                        >
-                          {sentence}
+                        <Text className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                          精确选词
                         </Text>
                       </TouchableOpacity>
-                    ))}
-                  </View>
+                      <Text className="text-xs text-gray-500 dark:text-gray-400">
+                        点击句子可保存
+                      </Text>
+                    </View>
+                  ) : (
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-xs text-gray-500 dark:text-gray-400">
+                        {selectionStart !== null && selectionEnd === null
+                          ? '请选择结束位置'
+                          : selectionStart !== null && selectionEnd !== null
+                          ? '可保存选中内容'
+                          : '请选择起始位置'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  {isSelectionMode ? (
+                    <View>
+                      {/* 选择模式：字符级别选择 */}
+                      <View className="flex flex-wrap">
+                        {splitIntoChars(news.answer || '').map((char, index) => {
+                          const isSelected =
+                            selectionStart !== null &&
+                            selectionEnd !== null &&
+                            index >= Math.min(selectionStart, selectionEnd) &&
+                            index <= Math.max(selectionStart, selectionEnd);
+
+                          const isStart = index === selectionStart;
+                          const isEnd = index === selectionEnd;
+
+                          return (
+                            <TouchableOpacity
+                              key={index}
+                              onPress={() => handleCharPress(index)}
+                              activeOpacity={0.7}
+                              className={`mx-0.5 mb-1 px-0.5 py-0.5 rounded ${
+                                isSelected ? 'bg-blue-100 dark:bg-blue-900/30' : ''
+                              } ${isStart || isEnd ? 'border-2 border-blue-500' : ''}`}
+                            >
+                              <Text
+                                className={`text-base leading-relaxed ${
+                                  isSelected
+                                    ? 'text-blue-700 dark:text-blue-300 font-medium'
+                                    : 'text-gray-900 dark:text-white'
+                                }`}
+                              >
+                                {char === ' ' ? '\u00A0' : char}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      {/* 选择控制按钮 */}
+                      {selectionStart !== null && (
+                        <View className="flex-row gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <TouchableOpacity
+                            onPress={handleCancelSelection}
+                            className="flex-1 bg-gray-200 dark:bg-gray-700 py-2 rounded-lg items-center"
+                          >
+                            <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              取消
+                            </Text>
+                          </TouchableOpacity>
+                          {selectionEnd !== null && (
+                            <TouchableOpacity
+                              onPress={handleSaveSelection}
+                              className="flex-1 bg-blue-600 dark:bg-blue-500 py-2 rounded-lg items-center"
+                            >
+                              <Text className="text-sm font-medium text-white">
+                                保存选中
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    <View>
+                      {/* 普通模式：句子级别选择 */}
+                      {splitIntoSentences(news.answer || '').map((sentence, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          onPress={() => handleSentencePress(sentence)}
+                          activeOpacity={0.7}
+                          className="mb-2"
+                        >
+                          <Text
+                            className={`text-base leading-relaxed ${
+                              selectedSentence === sentence
+                                ? 'text-blue-600 dark:text-blue-400 underline'
+                                : 'text-gray-900 dark:text-white'
+                            }`}
+                          >
+                            {sentence}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </View>
               </View>
             </View>

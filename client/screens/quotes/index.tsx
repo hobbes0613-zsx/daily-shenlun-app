@@ -114,7 +114,10 @@ export default function QuotesScreen() {
           <Text className="text-gray-500">加载中...</Text>
         </View>
       ) : quotes.length === 0 ? (
-        renderEmpty()
+        <View className="flex-1">
+          {renderHeader()}
+          {renderEmpty()}
+        </View>
       ) : (
         <FlatList
           data={quotes}
