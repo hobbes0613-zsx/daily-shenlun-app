@@ -92,6 +92,16 @@ export default function DetailScreen() {
     return text.split('');
   };
 
+  // 计算全局字符索引
+  const getGlobalIndex = (fullText: string, sentenceIndex: number, charIndex: number): number => {
+    const sentences = splitIntoSentences(fullText);
+    let globalIndex = 0;
+    for (let i = 0; i < sentenceIndex; i++) {
+      globalIndex += sentences[i].length;
+    }
+    return globalIndex + charIndex;
+  };
+
   const handleSentencePress = async (sentence: string) => {
     setSelectedSentence(sentence);
 
@@ -316,40 +326,46 @@ export default function DetailScreen() {
                 <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   {isSelectionMode ? (
                     <View>
-                      {/* 选择模式：字符级别选择 */}
-                      <View className="flex flex-wrap">
-                        {splitIntoChars(news.answer || '').map((char, index) => {
-                          const isSelected =
-                            selectionStart !== null &&
-                            selectionEnd !== null &&
-                            index >= Math.min(selectionStart, selectionEnd) &&
-                            index <= Math.max(selectionStart, selectionEnd);
+                      {/* 选择模式：字符级别选择，保持原有段落格式 */}
+                      {splitIntoSentences(news.answer || '').map((sentence, sIndex) => {
+                        const chars = splitIntoChars(sentence);
+                        return (
+                          <View key={sIndex} className="mb-2 flex-wrap flex-row">
+                            {chars.map((char, cIndex) => {
+                              const globalIndex = getGlobalIndex(news.answer || '', sIndex, cIndex);
+                              const isSelected =
+                                selectionStart !== null &&
+                                selectionEnd !== null &&
+                                globalIndex >= Math.min(selectionStart, selectionEnd) &&
+                                globalIndex <= Math.max(selectionStart, selectionEnd);
+                              const isStart = globalIndex === selectionStart;
+                              const isEnd = globalIndex === selectionEnd;
 
-                          const isStart = index === selectionStart;
-                          const isEnd = index === selectionEnd;
-
-                          return (
-                            <TouchableOpacity
-                              key={index}
-                              onPress={() => handleCharPress(index)}
-                              activeOpacity={0.7}
-                              className={`mx-0.5 mb-1 px-0.5 py-0.5 rounded ${
-                                isSelected ? 'bg-blue-100 dark:bg-blue-900/30' : ''
-                              } ${isStart || isEnd ? 'border-2 border-blue-500' : ''}`}
-                            >
-                              <Text
-                                className={`text-base leading-relaxed ${
-                                  isSelected
-                                    ? 'text-blue-700 dark:text-blue-300 font-medium'
-                                    : 'text-gray-900 dark:text-white'
-                                }`}
-                              >
-                                {char === ' ' ? '\u00A0' : char}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
+                              return (
+                                <TouchableOpacity
+                                  key={`${sIndex}-${cIndex}`}
+                                  onPress={() => handleCharPress(globalIndex)}
+                                  activeOpacity={0.7}
+                                  className={`rounded ${
+                                    isSelected ? 'bg-blue-200 dark:bg-blue-800' : ''
+                                  } ${isStart || isEnd ? 'border-2 border-blue-500' : ''}`}
+                                  style={{ padding: 1 }}
+                                >
+                                  <Text
+                                    className={`text-base leading-relaxed ${
+                                      isSelected
+                                        ? 'text-blue-900 dark:text-blue-100'
+                                        : 'text-gray-900 dark:text-white'
+                                    }`}
+                                  >
+                                    {char === ' ' ? '\u00A0' : char}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        );
+                      })}
 
                       {/* 选择控制按钮 */}
                       {selectionStart !== null && (

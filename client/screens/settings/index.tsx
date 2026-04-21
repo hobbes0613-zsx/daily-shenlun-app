@@ -1,19 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
-import { useColorScheme } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { FontAwesome6 } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const THEME_KEY = 'app_theme';
+import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 
 interface ThemeOptionProps {
-  theme: 'light' | 'dark' | 'auto';
+  theme: ThemeMode;
   label: string;
   icon: string;
-  currentTheme: 'light' | 'dark' | 'auto';
-  onPress: (theme: 'light' | 'dark' | 'auto') => void;
+  currentTheme: ThemeMode;
+  onPress: (theme: ThemeMode) => void;
 }
 
 function ThemeOption({ theme, label, icon, currentTheme, onPress }: ThemeOptionProps) {
@@ -49,19 +46,7 @@ function ThemeOption({ theme, label, icon, currentTheme, onPress }: ThemeOptionP
 
 export default function SettingsScreen() {
   const router = useSafeRouter();
-  const colorScheme = useColorScheme();
-  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'auto'>(colorScheme || 'auto');
-
-  const handleThemeChange = async (theme: 'light' | 'dark' | 'auto') => {
-    setCurrentTheme(theme);
-    try {
-      await AsyncStorage.setItem(THEME_KEY, theme);
-      // 实际项目中需要创建ThemeContext来全局控制主题
-      alert('主题设置已保存，重启应用生效');
-    } catch (error) {
-      console.error('Error saving theme:', error);
-    }
-  };
+  const { themeMode, setThemeMode } = useTheme();
 
   return (
     <Screen>
@@ -84,9 +69,9 @@ export default function SettingsScreen() {
           <Text className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
             主题设置
           </Text>
-          <ThemeOption theme="light" label="浅色模式" icon="sun" currentTheme={currentTheme} onPress={handleThemeChange} />
-          <ThemeOption theme="dark" label="深色模式" icon="moon" currentTheme={currentTheme} onPress={handleThemeChange} />
-          <ThemeOption theme="auto" label="跟随系统" icon="circle-half-stroke" currentTheme={currentTheme} onPress={handleThemeChange} />
+          <ThemeOption theme="light" label="浅色模式" icon="sun" currentTheme={themeMode} onPress={setThemeMode} />
+          <ThemeOption theme="dark" label="深色模式" icon="moon" currentTheme={themeMode} onPress={setThemeMode} />
+          <ThemeOption theme="auto" label="跟随系统" icon="circle-half-stroke" currentTheme={themeMode} onPress={setThemeMode} />
         </View>
 
         {/* Info Section */}

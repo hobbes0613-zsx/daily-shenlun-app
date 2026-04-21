@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
-import { useColorScheme } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { FontAwesome6 } from '@expo/vector-icons';
 
@@ -17,8 +16,6 @@ export default function HomeScreen() {
   const [newsList, setNewsList] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useSafeRouter();
-  const colorScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(colorScheme === 'dark');
 
   useEffect(() => {
     fetchNewsList();
@@ -38,13 +35,6 @@ export default function HomeScreen() {
 
   const handleNewsPress = (news: News) => {
     router.push('/detail', { id: news.id });
-  };
-
-  const toggleTheme = () => {
-    setIsDark(!isDark);
-    // 这里实际上需要通过全局状态来切换主题
-    // 为了简化，我们使用useColorScheme的自动切换
-    // 如果需要手动切换，需要创建一个ThemeContext
   };
 
   const renderItem = ({ item, index }: { item: News; index: number }) => (
