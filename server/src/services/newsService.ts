@@ -5,11 +5,14 @@ export class NewsService {
   private config: Config;
   private llmClient: LLMClient;
   private newsData: News[] = [];
+  private lastUpdateTime: string | null = null;
+  private cachedNews: { data: News[]; time: string } | null = null;
 
   constructor() {
     this.config = new Config();
     this.llmClient = new LLMClient(this.config);
     this.initSampleNews();
+    this.loadCachedNews();
   }
 
   /**
@@ -112,9 +115,176 @@ export class NewsService {
   }
 
   /**
+   * 模拟从网络获取最新新闻
+   */
+  private async fetchNewsFromNetwork(): Promise<News[]> {
+    // 在实际项目中，这里应该调用真实的新闻API
+    // 例如：https://newsapi.org/v2/top-headlines?country=cn&category=politics&apiKey=YOUR_API_KEY
+
+    // 模拟网络延迟
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const today = new Date().toISOString().split('T')[0];
+    const news: News[] = [
+      {
+        id: Date.now(),
+        date: today,
+        title: `[${today}] 最新时政新闻：我国经济社会发展持续向好`,
+        summary: "国家统计局发布数据显示，我国经济运行保持恢复态势，高质量发展扎实推进",
+        importance: 1,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 1,
+        date: today,
+        title: `[${today}] 重要会议：中央召开经济工作会议`,
+        summary: "会议分析当前经济形势，部署明年经济工作，强调稳中求进工作总基调",
+        importance: 2,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 2,
+        date: today,
+        title: `[${today}] 科技创新：我国在人工智能领域取得新突破`,
+        summary: "科研团队发布最新研究成果，在自然语言处理和计算机视觉方面达到国际领先水平",
+        importance: 3,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 3,
+        date: today,
+        title: `[${today}] 民生保障：全国基本养老保险参保人数持续增加`,
+        summary: "人社部数据显示，我国社会保障体系不断完善，民生福祉持续增进",
+        importance: 4,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 4,
+        date: today,
+        title: `[${today}] 绿色发展：我国碳达峰碳中和工作稳步推进`,
+        summary: "国家发改委发布报告，能源结构持续优化，新能源产业发展势头良好",
+        importance: 5,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 5,
+        date: today,
+        title: `[${today}] 对外开放：我国与多国签署经贸合作协议`,
+        summary: "商务部宣布，我国与多个国家签署经贸合作协议，深化双边互利合作",
+        importance: 6,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 6,
+        date: today,
+        title: `[${today}] 乡村振兴：全国农村基础设施持续改善`,
+        summary: "农业农村部发布数据，农村人居环境整治成效显著，农民生活水平稳步提升",
+        importance: 7,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 7,
+        date: today,
+        title: `[${today}] 区域发展：京津冀协同发展取得新进展`,
+        summary: "国家发改委发布报告，京津冀区域合作不断深化，协同发展成效显著",
+        importance: 8,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 8,
+        date: today,
+        title: `[${today}] 教育改革：高等教育质量持续提升`,
+        summary: "教育部发布报告，高校创新能力不断增强，人才培养质量稳步提高",
+        importance: 9,
+        question: "",
+        answer: ""
+      },
+      {
+        id: Date.now() + 9,
+        date: today,
+        title: `[${today}] 法治建设：全国依法治国工作深入推进`,
+        summary: "司法部发布报告，法治中国建设成效显著，社会治理水平不断提升",
+        importance: 10,
+        question: "",
+        answer: ""
+      }
+    ];
+
+    return news;
+  }
+
+  /**
+   * 加载缓存的新闻
+   */
+  private loadCachedNews() {
+    // 使用内存缓存
+    if (this.cachedNews) {
+      const today = new Date().toISOString().split('T')[0];
+
+      // 如果是今天的数据，使用缓存
+      if (this.cachedNews.time === today) {
+        this.newsData = this.cachedNews.data;
+        this.lastUpdateTime = this.cachedNews.time;
+      }
+    }
+  }
+
+  /**
+   * 保存新闻到缓存
+   */
+  private saveCachedNews() {
+    const today = new Date().toISOString().split('T')[0];
+    this.cachedNews = {
+      data: this.newsData,
+      time: today
+    };
+    this.lastUpdateTime = today;
+  }
+
+  /**
+   * 检查是否需要更新新闻
+   */
+  private needsUpdate(): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    return this.lastUpdateTime !== today;
+  }
+
+  /**
+   * 刷新新闻（联网获取）
+   */
+  async refreshNews(): Promise<{ success: boolean; message: string }> {
+    try {
+      if (this.needsUpdate()) {
+        const newNews = await this.fetchNewsFromNetwork();
+        this.newsData = newNews;
+        this.saveCachedNews();
+        return { success: true, message: "新闻已更新" };
+      } else {
+        return { success: true, message: "今日新闻已是最新" };
+      }
+    } catch (error) {
+      console.error("Error refreshing news:", error);
+      return { success: false, message: "更新失败，请稍后重试" };
+    }
+  }
+
+  /**
    * 获取当日新闻列表（按重要性排序）
    */
   async getDailyNews(): Promise<News[]> {
+    // 自动检查是否需要更新
+    if (this.needsUpdate()) {
+      await this.refreshNews();
+    }
+
     const today = new Date().toISOString().split('T')[0];
     const todayNews = this.newsData
       .filter(news => news.date === today)

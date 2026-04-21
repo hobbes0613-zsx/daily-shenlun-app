@@ -19,6 +19,20 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * POST /api/v1/news/refresh
+ * 刷新新闻（联网获取最新新闻）
+ */
+router.post('/refresh', async (req, res) => {
+  try {
+    const result = await newsService.refreshNews();
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Error refreshing news:", error);
+    res.status(500).json({ error: "Failed to refresh news" });
+  }
+});
+
+/**
  * GET /api/v1/news/:id
  * 获取新闻详情
  */

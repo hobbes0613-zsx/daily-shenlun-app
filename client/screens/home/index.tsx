@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
 import { FontAwesome6 } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface News {
   id: number;
@@ -15,11 +16,23 @@ interface News {
 export default function HomeScreen() {
   const [newsList, setNewsList] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
   const router = useSafeRouter();
 
   useEffect(() => {
     fetchNewsList();
+    loadLastUpdateTime();
   }, []);
+
+  const loadLastUpdateTime = async () => {
+    try {
+      const time = await AsyncStorage.getItem('lastNewsUpdateTime');
+      setLastUpdateTime(time);
+    } catch (error) {
+      console.error('Error loading last update time:', error);
+    }
+  };
 
   const fetchNewsList = async () => {
     try {
@@ -30,6 +43,30 @@ export default function HomeScreen() {
       console.error('Error fetching news list:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/news/refresh`, {
+        method: 'POST',
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        // 更新新闻列表
+        await fetchNewsList();
+
+        // 保存更新时间
+        const now = new Date().toISOString();
+        await AsyncStorage.setItem('lastNewsUpdateTime', now);
+        setLastUpdateTime(now);
+      }
+    } catch (error) {
+      console.error('Error refreshing news:', error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -66,6 +103,11 @@ export default function HomeScreen() {
           <Text className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
             每日申论
           </Text>
+          {lastUpdateTime && (
+            <Text className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              更新于：{new Date(lastUpdateTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          )}
         </View>
         <View className="flex-row gap-3">
           <TouchableOpacity
@@ -99,6 +141,14 @@ export default function HomeScreen() {
           ListHeaderComponent={renderHeader}
           contentContainerClassName="pb-8"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#111111']}
+              tintColor="#888888"
+            />
+          }
         />
       )}
     </Screen>
