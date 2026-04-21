@@ -22,8 +22,11 @@ export default function RootLayout() {
           headerShown: false
         }}
       >
-        <Stack.Screen name="index" options={{ title: "" }} />
+        <Stack.Screen name="splash" options={{ title: "", headerShown: false }} />
+        <Stack.Screen name="home" options={{ title: "" }} />
         <Stack.Screen name="detail" options={{ title: "" }} />
+        <Stack.Screen name="settings" options={{ title: "" }} />
+        <Stack.Screen name="quotes" options={{ title: "" }} />
       </Stack>
       <Toast />
     </Provider>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
 import { FontAwesome6 } from '@expo/vector-icons';
+import { quoteService } from '@/services/quoteService';
 
 interface News {
   id: number;
@@ -20,6 +21,7 @@ export default function DetailScreen() {
   const [news, setNews] = useState<News | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [selectedSentence, setSelectedSentence] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -63,6 +65,56 @@ export default function DetailScreen() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  // 分割答案成句子
+  const splitIntoSentences = (text: string): string[] => {
+    if (!text) return [];
+    return text
+      .split(/([。！？；\n])/)
+      .filter(s => s.trim())
+      .reduce((acc: string[], curr, index, arr) => {
+        if (index % 2 === 0) {
+          acc.push(curr + (arr[index + 1] || ''));
+        }
+        return acc;
+      }, [])
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+  };
+
+  const handleSentencePress = async (sentence: string) => {
+    setSelectedSentence(sentence);
+
+    Alert.alert(
+      '保存金句',
+      sentence,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '保存',
+          onPress: async () => {
+            try {
+              const exists = await quoteService.isQuoteExist(sentence);
+              if (exists) {
+                Alert.alert('提示', '该金句已保存');
+                return;
+              }
+
+              await quoteService.addQuote({
+                content: sentence,
+                newsId: news?.id || 0,
+                newsTitle: news?.title || '',
+              });
+              Alert.alert('成功', '金句已保存');
+            } catch (error) {
+              Alert.alert('错误', '保存失败');
+            }
+            setSelectedSentence(null);
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -159,13 +211,35 @@ export default function DetailScreen() {
 
               {/* Answer */}
               <View>
-                <Text className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                  参考答案
-                </Text>
-                <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                  <Text className="text-base text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap">
-                    {news.answer}
+                <View className="flex-row items-center justify-between mb-3">
+                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
+                    参考答案
                   </Text>
+                  <Text className="text-xs text-gray-500 dark:text-gray-400">
+                    点击句子可保存为金句
+                  </Text>
+                </View>
+                <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <View>
+                    {splitIntoSentences(news.answer || '').map((sentence, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        onPress={() => handleSentencePress(sentence)}
+                        activeOpacity={0.7}
+                        className="mb-2"
+                      >
+                        <Text
+                          className={`text-base leading-relaxed ${
+                            selectedSentence === sentence
+                              ? 'text-blue-600 dark:text-blue-400 underline'
+                              : 'text-gray-900 dark:text-white'
+                          }`}
+                        >
+                          {sentence}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
             </View>
