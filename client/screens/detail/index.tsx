@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TouchableWithoutFeedback } from 'react-native';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { quoteService } from '@/services/quoteService';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 
 interface News {
   id: number;
@@ -25,6 +27,8 @@ export default function DetailScreen() {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -141,16 +145,39 @@ export default function DetailScreen() {
       // 第一次点击，设置起始位置
       setSelectionStart(index);
     } else if (selectionEnd === null) {
-      // 第二次点击，设置结束位置
+      // 第二次点击，设置结束位置并显示确认框
       setSelectionEnd(index);
+      setShowSaveModal(true);
     } else {
       // 重新开始选择
       setSelectionStart(index);
       setSelectionEnd(null);
+      setShowSaveModal(false);
     }
   };
 
-  const handleSaveSelection = () => {
+  // 长按开始选择
+  const handleLongPress = (index: number) => {
+    setSelectionStart(index);
+    setIsSelecting(true);
+  };
+
+  // 滑动选择
+  const handleCharHover = (index: number) => {
+    if (isSelecting && selectionStart !== null) {
+      setSelectionEnd(index);
+    }
+  };
+
+  // 结束选择
+  const handleSelectionEnd = () => {
+    setIsSelecting(false);
+    if (selectionStart !== null && selectionEnd !== null) {
+      setShowSaveModal(true);
+    }
+  };
+
+  const handleSaveSelection = async () => {
     if (news && selectionStart !== null && selectionEnd !== null) {
       const answer = news.answer || '';
       const start = Math.min(selectionStart, selectionEnd);
@@ -158,37 +185,25 @@ export default function DetailScreen() {
       const selectedText = answer.substring(start, end);
 
       if (selectedText.trim()) {
-        Alert.alert(
-          '保存金句',
-          selectedText,
-          [
-            { text: '取消', style: 'cancel' },
-            {
-              text: '保存',
-              onPress: async () => {
-                try {
-                  const exists = await quoteService.isQuoteExist(selectedText);
-                  if (exists) {
-                    Alert.alert('提示', '该金句已保存');
-                    return;
-                  }
+        try {
+          const exists = await quoteService.isQuoteExist(selectedText);
+          if (exists) {
+            Alert.alert('提示', '该金句已保存');
+            setShowSaveModal(false);
+            return;
+          }
 
-                  await quoteService.addQuote({
-                    content: selectedText,
-                    newsId: news.id,
-                    newsTitle: news.title,
-                  });
-                  Alert.alert('成功', '金句已保存');
-                  setIsSelectionMode(false);
-                  setSelectionStart(null);
-                  setSelectionEnd(null);
-                } catch (error) {
-                  Alert.alert('错误', '保存失败');
-                }
-              },
-            },
-          ]
-        );
+          await quoteService.addQuote({
+            content: selectedText,
+            newsId: news.id,
+            newsTitle: news.title,
+          });
+          Alert.alert('成功', '金句已保存');
+          setShowSaveModal(false);
+          handleCancelSelection();
+        } catch (error) {
+          Alert.alert('错误', '保存失败');
+        }
       }
     }
   };
@@ -197,6 +212,18 @@ export default function DetailScreen() {
     setIsSelectionMode(false);
     setSelectionStart(null);
     setSelectionEnd(null);
+    setIsSelecting(false);
+    setShowSaveModal(false);
+  };
+
+  const getSelectedText = (): string => {
+    if (news && selectionStart !== null && selectionEnd !== null) {
+      const answer = news.answer || '';
+      const start = Math.min(selectionStart, selectionEnd);
+      const end = Math.max(selectionStart, selectionEnd) + 1;
+      return answer.substring(start, end);
+    }
+    return '';
   };
 
   if (loading) {
@@ -220,8 +247,9 @@ export default function DetailScreen() {
   }
 
   return (
-    <Screen>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+    <>
+      <Screen>
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="px-4 pt-4 pb-6 border-b border-gray-200 dark:border-gray-700">
           <TouchableOpacity onPress={() => router.back()} className="mb-4">
@@ -280,12 +308,15 @@ export default function DetailScreen() {
           ) : (
             <View>
               {/* Question */}
-              <View className="mb-6">
-                <Text className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                  题目
-                </Text>
-                <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                  <Text className="text-base text-gray-900 dark:text-white leading-relaxed">
+              <View className="mb-8">
+                <View className="flex-row items-center mb-4">
+                  <View className="w-1 h-5 bg-gray-900 dark:bg-white rounded-full mr-3" />
+                  <Text className="text-base font-bold text-gray-900 dark:text-white">
+                    题目
+                  </Text>
+                </View>
+                <View className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <Text className="text-base text-gray-800 dark:text-gray-200 leading-relaxed font-medium">
                     {news.question}
                   </Text>
                 </View>
@@ -293,15 +324,18 @@ export default function DetailScreen() {
 
               {/* Answer */}
               <View>
-                <View className="flex-row items-center justify-between mb-3">
-                  <Text className="text-sm font-semibold text-gray-900 dark:text-white">
-                    参考答案
-                  </Text>
+                <View className="flex-row items-center justify-between mb-4">
+                  <View className="flex-row items-center">
+                    <View className="w-1 h-5 bg-gray-900 dark:bg-white rounded-full mr-3" />
+                    <Text className="text-base font-bold text-gray-900 dark:text-white">
+                      参考答案
+                    </Text>
+                  </View>
                   {!isSelectionMode ? (
                     <View className="flex-row items-center gap-2">
                       <TouchableOpacity
                         onPress={() => setIsSelectionMode(true)}
-                        className="bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full"
+                        className="bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full"
                       >
                         <Text className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                           精确选词
@@ -314,16 +348,12 @@ export default function DetailScreen() {
                   ) : (
                     <View className="flex-row items-center gap-2">
                       <Text className="text-xs text-gray-500 dark:text-gray-400">
-                        {selectionStart !== null && selectionEnd === null
-                          ? '请选择结束位置'
-                          : selectionStart !== null && selectionEnd !== null
-                          ? '可保存选中内容'
-                          : '请选择起始位置'}
+                        长按并滑动可选择文字
                       </Text>
                     </View>
                   )}
                 </View>
-                <View className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <View className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
                   {isSelectionMode ? (
                     <View>
                       {/* 选择模式：字符级别选择，保持原有段落格式 */}
@@ -341,77 +371,103 @@ export default function DetailScreen() {
                               const isStart = globalIndex === selectionStart;
                               const isEnd = globalIndex === selectionEnd;
 
+                              // 创建手势
+                              const tap = Gesture.Tap()
+                                .onStart(() => {
+                                  if (!isSelecting) {
+                                    handleCharPress(globalIndex);
+                                  }
+                                });
+
+                              const longPress = Gesture.LongPress()
+                                .minDuration(300)
+                                .onStart(() => {
+                                  runOnJS(handleLongPress)(globalIndex);
+                                });
+
+                              const pan = Gesture.Pan()
+                                .onStart(() => {
+                                  if (isSelecting) {
+                                    runOnJS(handleSelectionEnd)();
+                                  }
+                                })
+                                .onUpdate((event) => {
+                                  if (isSelecting && selectionStart !== null) {
+                                    runOnJS(handleCharHover)(globalIndex);
+                                  }
+                                })
+                                .onEnd(() => {
+                                  if (isSelecting) {
+                                    runOnJS(handleSelectionEnd)();
+                                  }
+                                });
+
+                              const composed = Gesture.Race(tap, longPress, pan);
+
                               return (
-                                <TouchableOpacity
-                                  key={`${sIndex}-${cIndex}`}
-                                  onPress={() => handleCharPress(globalIndex)}
-                                  activeOpacity={0.7}
-                                  className={`rounded ${
-                                    isSelected ? 'bg-blue-200 dark:bg-blue-800' : ''
-                                  } ${isStart || isEnd ? 'border-2 border-blue-500' : ''}`}
-                                  style={{ padding: 1 }}
-                                >
-                                  <Text
-                                    className={`text-base leading-relaxed ${
-                                      isSelected
-                                        ? 'text-blue-900 dark:text-blue-100'
-                                        : 'text-gray-900 dark:text-white'
-                                    }`}
+                                <GestureDetector key={`${sIndex}-${cIndex}`} gesture={composed}>
+                                  <View
+                                    className={`rounded ${
+                                      isSelected ? 'bg-blue-200 dark:bg-blue-800' : ''
+                                    } ${isStart || isEnd ? 'border-2 border-blue-500' : ''}`}
+                                    style={{ padding: 1 }}
                                   >
-                                    {char === ' ' ? '\u00A0' : char}
-                                  </Text>
-                                </TouchableOpacity>
+                                    <Text
+                                      className={`text-base leading-relaxed ${
+                                        isSelected
+                                          ? 'text-blue-900 dark:text-blue-100'
+                                          : 'text-gray-900 dark:text-white'
+                                      }`}
+                                    >
+                                      {char === ' ' ? '\u00A0' : char}
+                                    </Text>
+                                  </View>
+                                </GestureDetector>
                               );
                             })}
                           </View>
                         );
                       })}
 
-                      {/* 选择控制按钮 */}
+                      {/* 取消按钮 */}
                       {selectionStart !== null && (
-                        <View className="flex-row gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <TouchableOpacity
-                            onPress={handleCancelSelection}
-                            className="flex-1 bg-gray-200 dark:bg-gray-700 py-2 rounded-lg items-center"
-                          >
-                            <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              取消
-                            </Text>
-                          </TouchableOpacity>
-                          {selectionEnd !== null && (
-                            <TouchableOpacity
-                              onPress={handleSaveSelection}
-                              className="flex-1 bg-blue-600 dark:bg-blue-500 py-2 rounded-lg items-center"
-                            >
-                              <Text className="text-sm font-medium text-white">
-                                保存选中
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
+                        <TouchableOpacity
+                          onPress={handleCancelSelection}
+                          className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 py-2"
+                        >
+                          <Text className="text-sm font-medium text-gray-600 dark:text-gray-400 text-center">
+                            取消选择
+                          </Text>
+                        </TouchableOpacity>
                       )}
                     </View>
                   ) : (
                     <View>
                       {/* 普通模式：句子级别选择 */}
-                      {splitIntoSentences(news.answer || '').map((sentence, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          onPress={() => handleSentencePress(sentence)}
-                          activeOpacity={0.7}
-                          className="mb-2"
-                        >
-                          <Text
-                            className={`text-base leading-relaxed ${
+                      <View className="space-y-4">
+                        {splitIntoSentences(news.answer || '').map((sentence, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            onPress={() => handleSentencePress(sentence)}
+                            activeOpacity={0.7}
+                            className={`p-4 rounded-xl border ${
                               selectedSentence === sentence
-                                ? 'text-blue-600 dark:text-blue-400 underline'
-                                : 'text-gray-900 dark:text-white'
+                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'
                             }`}
                           >
-                            {sentence}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                            <Text
+                              className={`text-base leading-relaxed ${
+                                selectedSentence === sentence
+                                  ? 'text-blue-700 dark:text-blue-300 font-medium'
+                                  : 'text-gray-800 dark:text-gray-200'
+                              }`}
+                            >
+                              {sentence}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     </View>
                   )}
                 </View>
@@ -420,6 +476,53 @@ export default function DetailScreen() {
           )}
         </View>
       </ScrollView>
-    </Screen>
+      </Screen>
+
+      {/* 保存确认提示框 */}
+      <Modal
+        visible={showSaveModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSaveModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowSaveModal(false)}>
+          <View className="flex-1 items-center justify-center bg-black/50">
+            <TouchableWithoutFeedback>
+              <View className="mx-4 w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl">
+                <Text className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  保存金句
+                </Text>
+                <Text className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  已选择以下内容，是否保存？
+                </Text>
+                <View className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-6 max-h-40 overflow-y-auto">
+                  <Text className="text-base text-gray-900 dark:text-white leading-relaxed">
+                    {getSelectedText()}
+                  </Text>
+                </View>
+                <View className="flex-row gap-3">
+                  <TouchableOpacity
+                    onPress={() => setShowSaveModal(false)}
+                    className="flex-1 bg-gray-200 dark:bg-gray-700 py-3 rounded-xl"
+                  >
+                    <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
+                      取消
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleSaveSelection}
+                    className="flex-1 bg-blue-600 dark:bg-blue-500 py-3 rounded-xl"
+                  >
+                    <Text className="text-sm font-medium text-white text-center">
+                      保存
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </>
   );
 }
