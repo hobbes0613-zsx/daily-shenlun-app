@@ -414,7 +414,12 @@ export default function DetailScreen() {
                       </Text>
                       <View className="flex-row items-center gap-2">
                         <TouchableOpacity
-                          onPress={() => setIsSelectionMode(!isSelectionMode)}
+                          onPress={() => {
+                            setIsSelectionMode(!isSelectionMode);
+                            setIsSelecting(false);
+                            setSelectionStart(null);
+                            setSelectionEnd(null);
+                          }}
                           className={`px-3 py-1.5 rounded-full ${isSelectionMode ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-gray-700'}`}
                         >
                           <Text className={`text-xs font-semibold ${isSelectionMode ? 'text-white dark:text-gray-900' : 'text-gray-700 dark:text-gray-300'}`}>
