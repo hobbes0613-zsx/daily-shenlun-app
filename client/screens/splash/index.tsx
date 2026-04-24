@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Dimensions, StyleSheet, Animated, Easing } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
@@ -7,10 +7,10 @@ const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen() {
   const router = useSafeRouter();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const dropY = useRef(new Animated.Value(-100)).current;
-  const rippleScale = useRef(new Animated.Value(0)).current;
-  const rippleOpacity = useRef(new Animated.Value(1)).current;
+  const fadeAnim = new Animated.Value(0);
+  const dropY = new Animated.Value(-100);
+  const rippleScale = new Animated.Value(0);
+  const rippleOpacity = new Animated.Value(1);
 
   useEffect(() => {
     // 淡入动画

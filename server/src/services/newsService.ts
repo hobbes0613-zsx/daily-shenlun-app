@@ -1,18 +1,26 @@
 import { LLMClient, Config } from "coze-coding-dev-sdk";
-import type { News } from "../types/news";
+import type { News } from "../types/news.js";
+import { databaseService } from "./databaseService.js";
 
 export class NewsService {
   private config: Config;
   private llmClient: LLMClient;
   private newsData: News[] = [];
   private lastUpdateTime: string | null = null;
-  private cachedNews: { data: News[]; time: string } | null = null;
 
   constructor() {
     this.config = new Config();
     this.llmClient = new LLMClient(this.config);
     this.initSampleNews();
-    this.loadCachedNews();
+    this.initializeDatabase();
+  }
+
+  /**
+   * 初始化数据库连接
+   */
+  private async initializeDatabase() {
+    await databaseService.initialize();
+    await this.loadCachedNews();
   }
 
   /**
@@ -224,29 +232,38 @@ export class NewsService {
   /**
    * 加载缓存的新闻
    */
-  private loadCachedNews() {
-    // 使用内存缓存
-    if (this.cachedNews) {
-      const today = new Date().toISOString().split('T')[0];
+  private async loadCachedNews() {
+    if (!databaseService.isAvailable()) {
+      // 如果数据库不可用，使用内存数据
+      console.log('Database not available, using sample data');
+      return;
+    }
 
-      // 如果是今天的数据，使用缓存
-      if (this.cachedNews.time === today) {
-        this.newsData = this.cachedNews.data;
-        this.lastUpdateTime = this.cachedNews.time;
-      }
+    const today = new Date().toISOString().split('T')[0];
+    const cachedData = await databaseService.getNews(today);
+
+    if (cachedData) {
+      this.newsData = cachedData;
+      this.lastUpdateTime = today;
+      console.log(`Loaded ${cachedData.length} news items from database`);
     }
   }
 
   /**
    * 保存新闻到缓存
    */
-  private saveCachedNews() {
+  private async saveCachedNews() {
+    if (!databaseService.isAvailable()) {
+      console.log('Database not available, skipping save');
+      return;
+    }
+
     const today = new Date().toISOString().split('T')[0];
-    this.cachedNews = {
-      data: this.newsData,
-      time: today
-    };
-    this.lastUpdateTime = today;
+    const saved = await databaseService.saveNews(today, this.newsData);
+    if (saved) {
+      this.lastUpdateTime = today;
+      console.log(`Saved ${this.newsData.length} news items to database`);
+    }
   }
 
   /**
@@ -265,7 +282,7 @@ export class NewsService {
       if (this.needsUpdate()) {
         const newNews = await this.fetchNewsFromNetwork();
         this.newsData = newNews;
-        this.saveCachedNews();
+        await this.saveCachedNews();
         return { success: true, message: "新闻已更新" };
       } else {
         return { success: true, message: "今日新闻已是最新" };

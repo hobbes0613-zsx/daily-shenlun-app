@@ -545,7 +545,7 @@ export default function DetailScreen() {
       >
         <TouchableWithoutFeedback onPress={() => setShowSaveModal(false)}>
           <View className="flex-1 bg-black/50 items-center justify-center p-4">
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback>
               <View className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl">
                 <View className="p-5 border-b border-gray-200 dark:border-gray-700">
                   <Text className="text-lg font-bold text-gray-900 dark:text-white">
