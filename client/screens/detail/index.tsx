@@ -81,15 +81,10 @@ export default function DetailScreen() {
   // 分割答案成句子
   const splitIntoSentences = (text: string): string[] => {
     if (!text) return [];
-    return text
-      .split(/([。！？；\n])/)
-      .filter(s => s.trim())
-      .reduce((acc: string[], curr, index, arr) => {
-        if (index % 2 === 0) {
-          acc.push(curr + (arr[index + 1] || ''));
-        }
-        return acc;
-      }, [])
+    // 使用正则表达式按句号、感叹号、问号、分号或换行符分割
+    // 确保每个句子都包含其结束标点
+    const sentences = text.split(/(?<=[。！？；])|(?<=\n)/g);
+    return sentences
       .map(s => s.trim())
       .filter(s => s.length > 0);
   };
@@ -224,6 +219,95 @@ export default function DetailScreen() {
   const isStartOrEnd = (index: number): boolean => {
     if (selectionStart === null || selectionEnd === null) return false;
     return index === selectionStart || index === selectionEnd;
+  };
+
+  // 选择整段文本（基于句子）
+  const selectWholeSentence = () => {
+    if (!news?.answer) return;
+
+    // 找到当前选择位置所在的句子
+    const answer = news.answer;
+    const sentences = splitIntoSentences(answer);
+
+    // 找到起始位置所在的句子
+    let currentSentence = '';
+    let sentenceIndex = 0;
+    let charCount = 0;
+
+    for (let i = 0; i < sentences.length; i++) {
+      const sentence = sentences[i];
+      if (selectionStart !== null) {
+        // 计算句子在原文中的位置
+        const startPos = answer.indexOf(sentence, charCount);
+        const endPos = startPos + sentence.length;
+
+        if (selectionStart >= startPos && selectionStart < endPos) {
+          currentSentence = sentence;
+          sentenceIndex = i;
+          break;
+        }
+      }
+      charCount += sentence.length;
+    }
+
+    if (currentSentence) {
+      // 找到句子在原文中的位置
+      const startPos = answer.indexOf(currentSentence);
+      const endPos = startPos + currentSentence.length;
+
+      setSelectionStart(startPos);
+      setSelectionEnd(endPos - 1);
+      setIsSelecting(false);
+      setShowSaveModal(true);
+    }
+  };
+
+  // 扩展选择到下一个句子
+  const extendToNextSentence = () => {
+    if (!news?.answer || selectionStart === null || selectionEnd === null) return;
+
+    const answer = news.answer;
+    const sentences = splitIntoSentences(answer);
+
+    // 找到当前选择结束的位置
+    const currentEnd = Math.max(selectionStart, selectionEnd);
+
+    // 找到下一个句子
+    for (let i = 0; i < sentences.length; i++) {
+      const startPos = answer.indexOf(sentences[i]);
+      const endPos = startPos + sentences[i].length;
+
+      if (startPos > currentEnd) {
+        // 找到了下一个句子，扩展选择
+        setSelectionEnd(endPos - 1);
+        setIsSelecting(false);
+        setShowSaveModal(true);
+        return;
+      }
+    }
+  };
+
+  // 缩小选择到上一个句子
+  const shrinkToPreviousSentence = () => {
+    if (!news?.answer || selectionStart === null || selectionEnd === null) return;
+
+    const answer = news.answer;
+    const sentences = splitIntoSentences(answer);
+
+    // 找到当前选择开始的位置
+    const currentStart = Math.min(selectionStart, selectionEnd);
+
+    // 找到上一个句子
+    for (let i = sentences.length - 1; i >= 0; i--) {
+      const startPos = answer.indexOf(sentences[i]);
+      const endPos = startPos + sentences[i].length;
+
+      if (endPos <= currentStart && sentences[i].trim()) {
+        // 找到了上一个句子，缩小选择
+        setSelectionStart(endPos);
+        return;
+      }
+    }
   };
 
   if (loading) {
@@ -391,14 +475,54 @@ export default function DetailScreen() {
 
                 {/* Selection Mode Info */}
                 {isSelectionMode && (
-                  <View className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <Text className="text-sm text-blue-800 dark:text-blue-300">
-                      {isSelecting
-                        ? '请点击选择结束位置'
-                        : selectionStart !== null
-                        ? '选择中... 点击其他字符完成'
-                        : '点击第一个字符开始选择'}
-                    </Text>
+                  <View className="mt-3 space-y-2">
+                    <View className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <Text className="text-sm text-blue-800 dark:text-blue-300">
+                        {isSelecting
+                          ? '请点击选择结束位置'
+                          : selectionStart !== null
+                          ? '选择中... 点击其他字符完成'
+                          : '点击第一个字符开始选择'}
+                      </Text>
+                    </View>
+
+                    {/* 快捷按钮 */}
+                    {selectionStart !== null && (
+                      <View className="flex-row flex-wrap gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <TouchableOpacity
+                          onPress={selectWholeSentence}
+                          className="flex-1 min-w-[100px] px-3 py-2 bg-blue-600 rounded-lg"
+                        >
+                          <Text className="text-xs font-semibold text-white text-center">
+                            选择整段
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={extendToNextSentence}
+                          className="flex-1 min-w-[100px] px-3 py-2 bg-gray-600 dark:bg-gray-700 rounded-lg"
+                        >
+                          <Text className="text-xs font-semibold text-white text-center">
+                            扩展下段
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={shrinkToPreviousSentence}
+                          className="flex-1 min-w-[100px] px-3 py-2 bg-gray-600 dark:bg-gray-700 rounded-lg"
+                        >
+                          <Text className="text-xs font-semibold text-white text-center">
+                            缩小上段
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleCancelSelection}
+                          className="flex-1 min-w-[100px] px-3 py-2 bg-red-600 rounded-lg"
+                        >
+                          <Text className="text-xs font-semibold text-white text-center">
+                            取消
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 )}
               </>
