@@ -1,0 +1,11 @@
+[phases.build]
+cmds = ["pnpm run build"]
+
+[phases.install]
+cmds = ["pnpm install"]
+
+[phases.setup]
+nixPkgs = ["nodejs-20_x"]
+
+[variables]
+NODE_ENV = "production"
