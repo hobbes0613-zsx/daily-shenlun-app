@@ -18,6 +18,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useSafeRouter();
 
   useEffect(() => {
@@ -36,11 +37,42 @@ export default function HomeScreen() {
 
   const fetchNewsList = async () => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/news`);
+      // 调试日志：检查环境变量
+      const baseUrl = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+      console.log('=== 调试信息 ===');
+      console.log('环境变量 EXPO_PUBLIC_BACKEND_BASE_URL:', baseUrl);
+      console.log('完整URL:', `${baseUrl}/api/v1/news`);
+
+      if (!baseUrl) {
+        throw new Error('后端URL配置为空，请检查环境变量');
+      }
+
+      const fullUrl = `${baseUrl}/api/v1/news`;
+      console.log('开始请求:', fullUrl);
+
+      const response = await fetch(fullUrl);
+      console.log('响应状态:', response.status);
+      console.log('响应头:', response.headers);
+
+      if (!response.ok) {
+        throw new Error(`网络请求失败: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log('响应数据:', data);
+
+      if (!data.data) {
+        throw new Error('返回数据格式错误');
+      }
+
+      console.log('新闻列表长度:', data.data.length);
       setNewsList(data.data || []);
+      setErrorMessage(null);
     } catch (error) {
+      console.error('=== 错误详情 ===');
       console.error('Error fetching news list:', error);
+      const errorMsg = error instanceof Error ? error.message : '未知错误';
+      setErrorMessage(`加载失败: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -132,6 +164,33 @@ export default function HomeScreen() {
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#111111" />
+          <Text className="mt-4 text-gray-500">加载中...</Text>
+        </View>
+      ) : errorMessage ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <FontAwesome6 name="wifi" size={48} color="#ef4444" />
+          <Text className="mt-4 text-lg font-semibold text-gray-900 dark:text-white text-center">
+            加载失败
+          </Text>
+          <Text className="mt-2 text-sm text-gray-500 text-center">
+            {errorMessage}
+          </Text>
+          <TouchableOpacity
+            onPress={fetchNewsList}
+            className="mt-6 bg-gray-900 dark:bg-white px-6 py-3 rounded-full"
+          >
+            <Text className="text-white dark:text-gray-900 font-medium">重试</Text>
+          </TouchableOpacity>
+        </View>
+      ) : newsList.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <FontAwesome6 name="newspaper" size={48} color="#888888" />
+          <Text className="mt-4 text-lg font-semibold text-gray-900 dark:text-white text-center">
+            暂无新闻
+          </Text>
+          <Text className="mt-2 text-sm text-gray-500 text-center">
+            请点击刷新按钮获取最新新闻
+          </Text>
         </View>
       ) : (
         <FlatList
