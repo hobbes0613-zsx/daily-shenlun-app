@@ -1,18 +1,53 @@
-import { LLMClient, Config } from "coze-coding-dev-sdk";
-import type { News } from "../types/news.js";
+import { News } from "../types/news.js";
 import { databaseService } from "./databaseService.js";
 
 export class NewsService {
-  private config: Config;
-  private llmClient: LLMClient;
   private newsData: News[] = [];
   private lastUpdateTime: string | null = null;
 
   constructor() {
-    this.config = new Config();
-    this.llmClient = new LLMClient(this.config);
     this.initSampleNews();
     this.initializeDatabase();
+  }
+
+  /**
+   * 获取DeepSeek API Key
+   */
+  private getDeepSeekApiKey(): string {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      console.error('DEEPSEEK_API_KEY not configured');
+      throw new Error('DeepSeek API Key not configured');
+    }
+    return apiKey;
+  }
+
+  /**
+   * 调用DeepSeek API生成申论
+   */
+  private async callDeepSeekAPI(messages: Array<{ role: string; content: string }>): Promise<string> {
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.getDeepSeekApiKey()}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('DeepSeek API error:', response.status, errorText);
+      throw new Error(`DeepSeek API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
   }
 
   /**
@@ -358,12 +393,8 @@ export class NewsService {
     ];
 
     try {
-      const response = await this.llmClient.invoke(messages, {
-        model: "doubao-seed-1-8-251228",
-        temperature: 0.7,
-      });
-
-      const content = response.content;
+      // 使用DeepSeek API生成申论
+      const content = await this.callDeepSeekAPI(messages);
 
       // 解析题目和答案
       let question = "";
@@ -377,6 +408,43 @@ export class NewsService {
       }
       if (answerMatch) {
         answer = answerMatch[1].trim();
+      }
+
+      // 如果解析失败，尝试其他格式
+      if (!question || !answer) {
+        // 备选解析逻辑
+        const lines = content.split('\n');
+        let currentSection = '';
+        let questionLines: string[] = [];
+        let answerLines: string[] = [];
+
+        for (const line of lines) {
+          if (line.includes('题目')) {
+            currentSection = 'question';
+            continue;
+          }
+          if (line.includes('答案')) {
+            currentSection = 'answer';
+            continue;
+          }
+
+          if (currentSection === 'question') {
+            questionLines.push(line.trim());
+          } else if (currentSection === 'answer') {
+            answerLines.push(line.trim());
+          }
+        }
+
+        if (questionLines.length > 0) question = questionLines.join('\n');
+        if (answerLines.length > 0) answer = answerLines.join('\n');
+      }
+
+      // 如果还是解析失败，生成默认内容
+      if (!question) {
+        question = "请根据上述时政新闻，结合申论考试要求，分析新闻的背景、原因、影响和对策。";
+      }
+      if (!answer) {
+        answer = content; // 使用完整返回内容作为答案
       }
 
       // 更新新闻数据
