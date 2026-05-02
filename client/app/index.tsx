@@ -6,86 +6,78 @@ import { useSafeRouter } from '@/hooks/useSafeRouter';
 
 const { width, height } = Dimensions.get('window');
 
+// 水滴最终停留位置（屏幕上方1/3处）
+const DROP_TARGET_Y = height * 0.28;
+
 export default function IndexScreen() {
   const insets = useSafeAreaInsets();
   const router = useSafeRouter();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   
-  // 使用useRef确保动画值在渲染之间保持稳定
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const dropY = useRef(new Animated.Value(-100)).current;
+  const dropY = useRef(new Animated.Value(-60)).current;
   const rippleScale = useRef(new Animated.Value(0)).current;
-  const rippleOpacity = useRef(new Animated.Value(1)).current;
+  const rippleOpacity = useRef(new Animated.Value(0)).current;
+  const waterLineOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 1. 淡入动画
+    // 1. 页面淡入
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 800,
+      duration: 600,
       useNativeDriver: true,
     }).start();
 
-    // 2. 水滴下落动画
+    // 2. 水滴下落
     Animated.timing(dropY, {
-      toValue: height * 0.55,
-      duration: 2000,
+      toValue: DROP_TARGET_Y,
+      duration: 2500,
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       useNativeDriver: true,
     }).start();
 
-    // 3. 涟漪动画序列
-    const rippleAnim = Animated.sequence([
-      Animated.delay(2000),
-      Animated.timing(rippleOpacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
+    // 3. 水面线淡入
+    Animated.timing(waterLineOpacity, {
+      toValue: 0.15,
+      duration: 800,
+      delay: 2400,
+      useNativeDriver: true,
+    }).start();
+
+    // 4. 涟漪动画
+    const rippleTimer = setTimeout(() => {
+      // 先显示涟漪
+      rippleOpacity.setValue(1);
+      rippleScale.setValue(0);
+      
+      // 涟漪扩散
       Animated.parallel([
         Animated.timing(rippleScale, {
           toValue: 1,
-          duration: 800,
+          duration: 1000,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(rippleOpacity, {
           toValue: 0,
-          duration: 1200,
+          duration: 1000,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-      ]),
-    ]);
-    rippleAnim.start();
+      ]).start();
+    }, 2500);
 
-    // 4. 3.5秒后跳转到首页
-    const timer = setTimeout(() => {
+    // 5. 3.5秒后跳转
+    const jumpTimer = setTimeout(() => {
       router.replace('/home');
     }, 3500);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(rippleTimer);
+      clearTimeout(jumpTimer);
     };
   }, []);
-
-  // 涟漪样式
-  const rippleStyle = {
-    transform: [
-      {
-        scaleY: rippleScale.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 0.3],
-        }),
-      },
-      {
-        scaleX: rippleScale.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 1],
-        }),
-      },
-    ],
-    opacity: rippleOpacity,
-  };
 
   return (
     <View
@@ -95,10 +87,34 @@ export default function IndexScreen() {
           opacity: fadeAnim,
           paddingTop: insets.top,
           paddingBottom: insets.bottom,
-          backgroundColor: isDark ? '#111827' : '#F9FAFB',
+          backgroundColor: isDark ? '#0D1117' : '#F7F8FA',
         }
       ]}
     >
+      {/* 水面线1 */}
+      <Animated.View
+        style={[
+          styles.waterLine,
+          {
+            top: DROP_TARGET_Y + 30,
+            opacity: waterLineOpacity,
+            backgroundColor: isDark ? '#4B5563' : '#9CA3AF',
+          }
+        ]}
+      />
+
+      {/* 水面线2 */}
+      <Animated.View
+        style={[
+          styles.waterLine,
+          {
+            top: DROP_TARGET_Y + 38,
+            opacity: waterLineOpacity,
+            backgroundColor: isDark ? '#4B5563' : '#9CA3AF',
+          }
+        ]}
+      />
+
       {/* 水滴 */}
       <Animated.View
         style={[
@@ -114,16 +130,17 @@ export default function IndexScreen() {
       <Animated.View
         style={[
           styles.ripple,
-          rippleStyle,
           {
-            borderColor: isDark ? 'rgba(156, 163, 175, 0.4)' : 'rgba(107, 114, 128, 0.4)',
-            backgroundColor: isDark ? 'rgba(156, 163, 175, 0.05)' : 'rgba(107, 114, 128, 0.05)',
+            opacity: rippleOpacity,
+            transform: [{ scale: rippleScale }],
+            top: DROP_TARGET_Y - 5,
+            borderColor: isDark ? '#6B7280' : '#D1D5DB',
           },
         ]}
       />
 
-      {/* 内容 */}
-      <View style={styles.content}>
+      {/* 标题区域 - 放在屏幕下方 */}
+      <View style={[styles.content, { paddingBottom: insets.bottom + 80 }]}>
         {/* 标题 */}
         <Text 
           style={[
@@ -138,7 +155,7 @@ export default function IndexScreen() {
         <Text 
           style={[
             styles.subtitle,
-            { color: isDark ? '#9CA3AF' : '#6B7280' }
+            { color: isDark ? '#6B7280' : '#9CA3AF' }
           ]}
         >
           博观而约取
@@ -146,7 +163,7 @@ export default function IndexScreen() {
         <Text 
           style={[
             styles.subtitle,
-            { color: isDark ? '#9CA3AF' : '#6B7280', marginTop: 4 }
+            { color: isDark ? '#6B7280' : '#9CA3AF' }
           ]}
         >
           厚积而薄发
@@ -156,21 +173,11 @@ export default function IndexScreen() {
         <Text 
           style={[
             styles.englishSubtitle,
-            { color: isDark ? '#6B7280' : '#9CA3AF', marginTop: 48 }
+            { color: isDark ? '#4B5563' : '#D1D5DB' }
           ]}
         >
           Daily Shenlun
         </Text>
-      </View>
-
-      {/* 底部装饰线 */}
-      <View style={styles.footer}>
-        <View 
-          style={[
-            styles.footerLine,
-            { backgroundColor: isDark ? '#F9FAFB' : '#111827' }
-          ]} 
-        />
       </View>
     </View>
   );
@@ -180,28 +187,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
   },
   drop: {
     position: 'absolute',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    left: width / 2 - 8,
-    top: -100,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    left: width / 2 - 7,
+    top: 0,
   },
   ripple: {
     position: 'absolute',
-    width: 100,
-    height: 50,
-    left: width / 2 - 50,
-    top: height * 0.55 - 25,
-    borderWidth: 2,
-    borderRadius: 100,
+    width: 80,
+    height: 20,
+    left: width / 2 - 40,
+    borderWidth: 1.5,
+    borderRadius: 40,
+    backgroundColor: 'transparent',
+  },
+  waterLine: {
+    position: 'absolute',
+    left: width * 0.2,
+    right: width * 0.2,
+    height: 1.5,
+    borderRadius: 1,
   },
   content: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
+    paddingTop: 20,
   },
   title: {
     fontSize: 28,
@@ -212,19 +231,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     letterSpacing: 4,
+    marginTop: 4,
   },
   englishSubtitle: {
     fontSize: 11,
     letterSpacing: 2,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 60,
-    alignItems: 'center',
-  },
-  footerLine: {
-    width: 80,
-    height: 2,
-    opacity: 0.2,
+    marginTop: 16,
   },
 });
