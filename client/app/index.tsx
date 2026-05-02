@@ -6,10 +6,10 @@ import { useSafeRouter } from '@/hooks/useSafeRouter';
 
 const { width, height } = Dimensions.get('window');
 
-// 水滴最终停留位置（屏幕上方30%处，距离水面）
-const DROP_TARGET_Y = height * 0.30;
+// 水滴最终停留位置（屏幕上方35%处）
+const DROP_TARGET_Y = height * 0.35;
 // 水面位置
-const WATER_SURFACE_Y = height * 0.33;
+const WATER_SURFACE_Y = height * 0.38;
 
 export default function IndexScreen() {
   const insets = useSafeAreaInsets();
@@ -40,10 +40,6 @@ export default function IndexScreen() {
   // 水面波纹
   const waterWave1 = useRef(new Animated.Value(0)).current;
   const waterWave2 = useRef(new Animated.Value(0)).current;
-  
-  // 水花溅起效果
-  const splashOpacity = useRef(new Animated.Value(0)).current;
-  const splashScale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // 1. 页面淡入
@@ -58,7 +54,7 @@ export default function IndexScreen() {
     Animated.timing(dropY, {
       toValue: WATER_SURFACE_Y - 10,
       duration: 2000,
-      easing: Easing.bezier(0.2, 0.8, 0.2, 1), // 加速下落
+      easing: Easing.bezier(0.2, 0.8, 0.2, 1),
       useNativeDriver: true,
     }).start();
 
@@ -99,7 +95,7 @@ export default function IndexScreen() {
 
     // 4. 水滴入水效果（2秒后触发）
     const dropTimer = setTimeout(() => {
-      // 水滴消失并溅起
+      // 水滴消失
       Animated.parallel([
         Animated.timing(dropOpacity, {
           toValue: 0,
@@ -109,25 +105,6 @@ export default function IndexScreen() {
         Animated.timing(dropScale, {
           toValue: 1.5,
           duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      // 水花溅起
-      Animated.sequence([
-        Animated.timing(splashOpacity, {
-          toValue: 0.8,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(splashScale, {
-          toValue: 1.2,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(splashOpacity, {
-          toValue: 0,
-          duration: 300,
           useNativeDriver: true,
         }),
       ]).start();
@@ -213,6 +190,15 @@ export default function IndexScreen() {
     outputRange: [0, -6],
   });
 
+  // 黑白配色
+  const textColor = isDark ? '#FFFFFF' : '#000000';
+  const mutedColor = isDark ? '#6B7280' : '#9CA3AF';
+  const rippleColor = isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.3)';
+  const rippleColorLight = isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)';
+  const rippleColorOuter = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)';
+  const waveColor = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
+  const lineColor = isDark ? '#374151' : '#E5E7EB';
+
   return (
     <View
       style={[
@@ -221,21 +207,10 @@ export default function IndexScreen() {
           opacity: fadeAnim,
           paddingTop: insets.top,
           paddingBottom: insets.bottom,
-          backgroundColor: isDark ? '#0D1117' : '#F7F8FA',
+          backgroundColor: isDark ? '#0D1117' : '#FFFFFF',
         }
       ]}
     >
-      {/* 水面区域背景 */}
-      <View 
-        style={[
-          styles.waterArea,
-          {
-            top: WATER_SURFACE_Y - 20,
-            backgroundColor: isDark ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.03)',
-          }
-        ]}
-      />
-
       {/* 水面波动线1 */}
       <Animated.View
         style={[
@@ -268,7 +243,7 @@ export default function IndexScreen() {
             top: WATER_SURFACE_Y - 100,
             opacity: ripple3Opacity,
             transform: [{ scale: ripple3Scale }],
-            borderColor: isDark ? 'rgba(96, 165, 250, 0.3)' : 'rgba(59, 130, 246, 0.2)',
+            borderColor: rippleColorOuter,
           }
         ]}
       />
@@ -281,7 +256,7 @@ export default function IndexScreen() {
             top: WATER_SURFACE_Y - 60,
             opacity: ripple2Opacity,
             transform: [{ scale: ripple2Scale }],
-            borderColor: isDark ? 'rgba(96, 165, 250, 0.4)' : 'rgba(59, 130, 246, 0.3)',
+            borderColor: rippleColorLight,
           }
         ]}
       />
@@ -294,20 +269,7 @@ export default function IndexScreen() {
             top: WATER_SURFACE_Y - 30,
             opacity: ripple1Opacity,
             transform: [{ scale: ripple1Scale }],
-            borderColor: isDark ? 'rgba(147, 197, 253, 0.6)' : 'rgba(59, 130, 246, 0.5)',
-          }
-        ]}
-      />
-
-      {/* 水花溅起 */}
-      <Animated.View
-        style={[
-          styles.splash,
-          {
-            top: WATER_SURFACE_Y - 15,
-            opacity: splashOpacity,
-            transform: [{ scale: splashScale }],
-            backgroundColor: isDark ? 'rgba(147, 197, 253, 0.3)' : 'rgba(59, 130, 246, 0.2)',
+            borderColor: rippleColor,
           }
         ]}
       />
@@ -322,22 +284,8 @@ export default function IndexScreen() {
               { scale: dropScale },
             ],
             opacity: dropOpacity,
-            backgroundColor: isDark ? '#93C5FD' : '#3B82F6',
-            shadowColor: isDark ? '#60A5FA' : '#2563EB',
+            backgroundColor: textColor,
           },
-        ]}
-      />
-
-      {/* 高光效果 */}
-      <Animated.View
-        style={[
-          styles.dropHighlight,
-          {
-            transform: [
-              { translateY: dropY },
-            ],
-            opacity: dropOpacity,
-          }
         ]}
       />
 
@@ -347,7 +295,7 @@ export default function IndexScreen() {
         <View 
           style={[
             styles.decorLine,
-            { backgroundColor: isDark ? '#374151' : '#E5E7EB' }
+            { backgroundColor: lineColor }
           ]}
         />
 
@@ -355,7 +303,7 @@ export default function IndexScreen() {
         <Text 
           style={[
             styles.title,
-            { color: isDark ? '#F9FAFB' : '#111827' }
+            { color: textColor }
           ]}
         >
           每日申论
@@ -365,7 +313,7 @@ export default function IndexScreen() {
         <Text 
           style={[
             styles.subtitle,
-            { color: isDark ? '#6B7280' : '#9CA3AF' }
+            { color: mutedColor }
           ]}
         >
           博观而约取 · 厚积而薄发
@@ -375,7 +323,7 @@ export default function IndexScreen() {
         <Text 
           style={[
             styles.englishSubtitle,
-            { color: isDark ? '#4B5563' : '#D1D5DB' }
+            { color: mutedColor }
           ]}
         >
           Daily Shenlun
@@ -385,7 +333,7 @@ export default function IndexScreen() {
         <View 
           style={[
             styles.decorLine,
-            { backgroundColor: isDark ? '#374151' : '#E5E7EB' }
+            { backgroundColor: lineColor }
           ]}
         />
       </View>
@@ -400,21 +348,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
   },
-  waterArea: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '50%',
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-  },
   waterWave: {
     position: 'absolute',
     left: width * 0.1,
     right: width * 0.1,
     height: 2,
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
     borderRadius: 1,
   },
   drop: {
@@ -424,19 +363,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     left: width / 2 - 8,
     top: 0,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  dropHighlight: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    left: width / 2 - 4,
-    top: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
   },
   ripple1: {
     position: 'absolute',
@@ -444,34 +370,26 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     left: width / 2 - 30,
-    borderWidth: 2,
+    borderWidth: 1.5,
     backgroundColor: 'transparent',
   },
   ripple2: {
     position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    left: width / 2 - 50,
-    borderWidth: 1.5,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    left: width / 2 - 45,
+    borderWidth: 1,
     backgroundColor: 'transparent',
   },
   ripple3: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    left: width / 2 - 80,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    left: width / 2 - 60,
     borderWidth: 1,
     backgroundColor: 'transparent',
-  },
-  splash: {
-    position: 'absolute',
-    width: 30,
-    height: 15,
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
-    left: width / 2 - 15,
   },
   content: {
     position: 'absolute',
@@ -479,7 +397,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingTop: 20,
+    paddingTop: 40,
   },
   decorLine: {
     width: 40,
@@ -488,18 +406,20 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    letterSpacing: 10,
+    fontWeight: '300',
+    letterSpacing: 8,
     marginBottom: 12,
   },
   subtitle: {
-    fontSize: 13,
-    letterSpacing: 3,
-    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '300',
+    letterSpacing: 2,
+    marginBottom: 8,
   },
   englishSubtitle: {
-    fontSize: 11,
-    letterSpacing: 3,
-    marginTop: 12,
+    fontSize: 12,
+    fontWeight: '300',
+    letterSpacing: 4,
+    marginTop: 4,
   },
 });
