@@ -11,29 +11,29 @@ export class NewsService {
   }
 
   /**
-   * 获取Kimi API Key
+   * 获取DeepSeek API Key
    */
-  private getKimiApiKey(): string {
-    const apiKey = process.env.KIMI_API_KEY;
+  private getDeepSeekApiKey(): string {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
-      console.error('KIMI_API_KEY not configured');
-      throw new Error('Kimi API Key not configured');
+      console.error('DEEPSEEK_API_KEY not configured');
+      throw new Error('DeepSeek API Key not configured');
     }
     return apiKey;
   }
 
   /**
-   * 调用Kimi API生成申论
+   * 调用DeepSeek API生成申论
    */
-  private async callKimiAPI(messages: Array<{ role: string; content: string }>): Promise<string> {
-    const response = await fetch('https://api.moonshot.cn/v1/chat/completions', {
+  private async callDeepSeekAPI(messages: Array<{ role: string; content: string }>): Promise<string> {
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.getKimiApiKey()}`
+        'Authorization': `Bearer ${this.getDeepSeekApiKey()}`
       },
       body: JSON.stringify({
-        model: 'moonshot-v1-8k',
+        model: 'deepseek-chat',
         messages: messages,
         temperature: 0.7,
         max_tokens: 2000
@@ -42,8 +42,8 @@ export class NewsService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Kimi API error:', response.status, errorText);
-      throw new Error(`Kimi API error: ${response.status}`);
+      console.error('DeepSeek API error:', response.status, errorText);
+      throw new Error(`DeepSeek API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -393,8 +393,8 @@ export class NewsService {
     ];
 
     try {
-      // 使用Kimi API生成申论
-      const content = await this.callKimiAPI(messages);
+      // 使用DeepSeek API生成申论
+      const content = await this.callDeepSeekAPI(messages);
 
       // 解析题目和答案
       let question = "";
