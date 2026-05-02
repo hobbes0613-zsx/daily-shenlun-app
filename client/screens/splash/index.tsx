@@ -4,76 +4,139 @@ import { Screen } from '@/components/Screen';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 
 const { width, height } = Dimensions.get('window');
+// 水面位置（屏幕高度的55%位置）
+const WATER_LEVEL = height * 0.55;
 
 export default function SplashScreen() {
   const router = useSafeRouter();
+  
+  // 淡入动画
   const fadeAnim = new Animated.Value(0);
-  const dropY = new Animated.Value(-100);
+  
+  // 水滴下落动画 - 从顶部下落到水面位置
+  const dropY = new Animated.Value(-50);
+  
+  // 水滴大小动画 - 下落时变小（透视效果）
+  const dropScale = new Animated.Value(1);
+  
+  // 水滴透明度 - 接近水面时变淡
+  const dropOpacity = new Animated.Value(1);
+  
+  // 涟漪动画 - 从中心向外扩散
   const rippleScale = new Animated.Value(0);
-  const rippleOpacity = new Animated.Value(1);
+  const rippleOpacity = new Animated.Value(0);
+  
+  // 水面波动动画
+  const waveAnim = new Animated.Value(0);
 
   useEffect(() => {
-    // 淡入动画
+    // 1. 淡入动画
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 800,
+      duration: 600,
       useNativeDriver: true,
     }).start();
 
-    // 水滴下落动画
+    // 2. 水滴下落动画（更慢，更自然）
     Animated.timing(dropY, {
-      toValue: height * 0.55,
-      duration: 1500,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
+      toValue: WATER_LEVEL,
+      duration: 2500, // 下落时间变慢
+      easing: Easing.bezier(0.3, 0, 0.8, 0.7), // 缓动曲线
       useNativeDriver: true,
     }).start();
 
-    // 涟漪动画
-    const rippleAnim = Animated.sequence([
-      Animated.delay(1500),
+    // 3. 水滴逐渐变小（模拟透视）
+    Animated.timing(dropScale, {
+      toValue: 0.6, // 变小
+      duration: 2500,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start();
+
+    // 4. 水滴逐渐变淡
+    Animated.timing(dropOpacity, {
+      toValue: 0.7,
+      duration: 2500,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start();
+
+    // 5. 涟漪动画序列
+    const rippleSequence = Animated.sequence([
+      // 延迟到水滴到达水面
+      Animated.delay(2500),
+      // 涟漪淡入
+      Animated.timing(rippleOpacity, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      // 涟漪扩散 + 水滴消失
       Animated.parallel([
+        // 涟漪扩散
         Animated.timing(rippleScale, {
           toValue: 1,
           duration: 800,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
+        // 涟漪淡出
         Animated.timing(rippleOpacity, {
           toValue: 0,
-          duration: 1200,
+          duration: 800,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
     ]);
-    rippleAnim.start();
+    rippleSequence.start();
 
-    // 2.5秒后跳转到首页
+    // 6. 水面波动
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(waveAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(waveAnim, {
+          toValue: 0,
+          duration: 1500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    // 7. 3.5秒后跳转到首页
     const timer = setTimeout(() => {
       router.replace('/home');
-    }, 2500);
+    }, 3500);
 
     return () => {
       clearTimeout(timer);
-      rippleAnim.stop();
     };
   }, []);
 
+  // 涟漪样式
   const rippleStyle = {
     transform: [
+      { scale: rippleScale },
+    ],
+    opacity: rippleOpacity,
+  };
+
+  // 水面波动样式
+  const wave1Style = {
+    transform: [
       {
-        scaleY: rippleScale.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 0.3],
-        }),
-      },
-      {
-        scaleX: rippleScale.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, 1],
+        scaleX: waveAnim.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [1, 1.02, 1],
         }),
       },
     ],
-    opacity: rippleOpacity,
   };
 
   return (
@@ -82,24 +145,12 @@ export default function SplashScreen() {
         style={[styles.container, { opacity: fadeAnim }]}
         className="flex-1 bg-gray-50 dark:bg-gray-900"
       >
-        {/* 水滴 */}
-        <Animated.View
-          style={[
-            styles.drop,
-            {
-              transform: [{ translateY: dropY }],
-            },
-          ]}
-        />
-
-        {/* 涟漪 */}
-        <Animated.View
-          style={[
-            styles.ripple,
-            rippleStyle,
-          ]}
-        />
-
+        {/* 背景装饰 - 顶部渐变 */}
+        <View style={styles.topGradient} />
+        
+        {/* 顶部装饰线 */}
+        <View style={styles.topLine} />
+        
         {/* 内容 */}
         <View style={styles.content}>
           {/* 标题 */}
@@ -121,6 +172,53 @@ export default function SplashScreen() {
           </Text>
         </View>
 
+        {/* 水面区域 */}
+        <View style={[styles.waterArea, { top: WATER_LEVEL - 20 }]}>
+          {/* 水面波动线1 */}
+          <Animated.View style={[styles.waveLine, wave1Style]} />
+          
+          {/* 水面波动线2 */}
+          <Animated.View 
+            style={[
+              styles.waveLine, 
+              styles.waveLine2,
+              {
+                transform: [{
+                  scaleX: waveAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [1, 1.015, 1],
+                  }),
+                }],
+              }
+            ]} 
+          />
+        </View>
+
+        {/* 水滴 */}
+        <Animated.View
+          style={[
+            styles.drop,
+            {
+              transform: [
+                { translateY: dropY },
+                { scale: dropScale },
+              ],
+              opacity: dropOpacity,
+            },
+          ]}
+        />
+
+        {/* 涟漪 */}
+        <Animated.View
+          style={[
+            styles.ripple,
+            rippleStyle,
+            { top: WATER_LEVEL - 30 },
+          ]}
+        >
+          <View style={styles.rippleInner} />
+        </Animated.View>
+
         {/* 底部装饰 */}
         <View style={styles.footer}>
           <View className="w-20 h-0.5 bg-gray-900 dark:bg-white opacity-20" />
@@ -137,30 +235,73 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  drop: {
+  topGradient: {
     position: 'absolute',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#6B7280',
-    left: width / 2 - 8,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: 'rgba(107, 114, 128, 0.03)',
   },
-  ripple: {
+  topLine: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 2,
-    borderColor: '#6B7280',
-    top: height * 0.55,
-    left: width / 2 - 100,
+    top: 40,
+    width: 60,
+    height: 2,
+    backgroundColor: 'rgba(107, 114, 128, 0.2)',
+    borderRadius: 1,
   },
   content: {
     alignItems: 'center',
     marginTop: -80,
   },
+  waterArea: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 60,
+    overflow: 'hidden',
+  },
+  waveLine: {
+    position: 'absolute',
+    left: -10,
+    right: -10,
+    height: 2,
+    backgroundColor: 'rgba(107, 114, 128, 0.15)',
+    top: 30,
+  },
+  waveLine2: {
+    top: 34,
+    backgroundColor: 'rgba(107, 114, 128, 0.08)',
+  },
+  drop: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#6B7280',
+    left: width / 2 - 6,
+    top: -50,
+  },
+  ripple: {
+    position: 'absolute',
+    width: 60,
+    height: 30,
+    left: width / 2 - 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rippleInner: {
+    width: '100%',
+    height: '100%',
+    borderWidth: 1.5,
+    borderColor: 'rgba(107, 114, 128, 0.4)',
+    borderRadius: 100,
+    backgroundColor: 'rgba(107, 114, 128, 0.05)',
+  },
   footer: {
     position: 'absolute',
-    bottom: 64,
+    bottom: 60,
+    alignItems: 'center',
   },
 });
