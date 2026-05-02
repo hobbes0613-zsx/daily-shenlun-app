@@ -39,15 +39,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         }
       ] : 'expo-router',
       [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ],
-      [
         "expo-image-picker",
         {
           "photosPermission": `允许申论每日App访问您的相册，以便您上传或保存图片。`,
