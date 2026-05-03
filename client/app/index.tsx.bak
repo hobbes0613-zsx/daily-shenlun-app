@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Dimensions, StyleSheet, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useSafeRouter } from '@/hooks/useSafeRouter';
 
 const { width, height } = Dimensions.get('window');
 
@@ -10,8 +11,11 @@ const DROP_TARGET_Y = height * 0.35;
 // 水面位置
 const WATER_SURFACE_Y = height * 0.38;
 
-export default function SplashScreen() {
+export default function IndexScreen() {
   const insets = useSafeAreaInsets();
+  const router = useSafeRouter();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   
   // 页面淡入
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -36,16 +40,6 @@ export default function SplashScreen() {
   // 水面波纹
   const waterWave1 = useRef(new Animated.Value(0)).current;
   const waterWave2 = useRef(new Animated.Value(0)).current;
-  
-  // 主题色（使用浅色主题确保可见性）
-  const textColor = '#000000';
-  const mutedColor = '#6B7280';
-  const rippleColor = 'rgba(0, 0, 0, 0.3)';
-  const rippleColorLight = 'rgba(0, 0, 0, 0.2)';
-  const rippleColorOuter = 'rgba(0, 0, 0, 0.1)';
-  const waveColor = 'rgba(0, 0, 0, 0.1)';
-  const lineColor = '#D1D5DB';
-  const backgroundColor = '#FFFFFF';
 
   useEffect(() => {
     // 1. 页面淡入
@@ -65,7 +59,7 @@ export default function SplashScreen() {
     }).start();
 
     // 3. 水面波动效果（持续）
-    const wave1Loop = Animated.loop(
+    Animated.loop(
       Animated.sequence([
         Animated.timing(waterWave1, {
           toValue: 1,
@@ -80,10 +74,9 @@ export default function SplashScreen() {
           useNativeDriver: true,
         }),
       ])
-    );
-    wave1Loop.start();
+    ).start();
 
-    const wave2Loop = Animated.loop(
+    Animated.loop(
       Animated.sequence([
         Animated.timing(waterWave2, {
           toValue: 1,
@@ -98,8 +91,7 @@ export default function SplashScreen() {
           useNativeDriver: true,
         }),
       ])
-    );
-    wave2Loop.start();
+    ).start();
 
     // 4. 水滴入水效果（2秒后触发）
     const dropTimer = setTimeout(() => {
@@ -185,8 +177,6 @@ export default function SplashScreen() {
     return () => {
       clearTimeout(dropTimer);
       clearTimeout(jumpTimer);
-      wave1Loop.stop();
-      wave2Loop.stop();
     };
   }, []);
 
@@ -200,6 +190,15 @@ export default function SplashScreen() {
     outputRange: [0, -6],
   });
 
+  // 黑白配色
+  const textColor = isDark ? '#FFFFFF' : '#000000';
+  const mutedColor = isDark ? '#6B7280' : '#9CA3AF';
+  const rippleColor = isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.3)';
+  const rippleColorLight = isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)';
+  const rippleColorOuter = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)';
+  const waveColor = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
+  const lineColor = isDark ? '#374151' : '#E5E7EB';
+
   return (
     <View
       style={[
@@ -208,7 +207,7 @@ export default function SplashScreen() {
           opacity: fadeAnim,
           paddingTop: insets.top,
           paddingBottom: insets.bottom,
-          backgroundColor: backgroundColor,
+          backgroundColor: isDark ? '#0D1117' : '#FFFFFF',
         }
       ]}
     >
@@ -218,7 +217,7 @@ export default function SplashScreen() {
           styles.waterWave,
           {
             top: WATER_SURFACE_Y,
-            opacity: 0.15,
+            opacity: isDark ? 0.3 : 0.15,
             transform: [{ translateX: waveOffset1 }],
           }
         ]}
@@ -230,7 +229,7 @@ export default function SplashScreen() {
           styles.waterWave,
           {
             top: WATER_SURFACE_Y + 8,
-            opacity: 0.1,
+            opacity: isDark ? 0.2 : 0.1,
             transform: [{ translateX: waveOffset2 }],
           }
         ]}
