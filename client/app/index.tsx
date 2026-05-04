@@ -2,6 +2,10 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, Dimensions, StyleSheet, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+
+// 保持原生启动屏不自动隐藏
+SplashScreen.preventAutoHideAsync();
 
 const { width, height } = Dimensions.get('window');
 
@@ -10,8 +14,9 @@ const DROP_TARGET_Y = height * 0.35;
 // 水面位置
 const WATER_SURFACE_Y = height * 0.38;
 
-export default function SplashScreen() {
+export default function SplashScreenPage() {
   const insets = useSafeAreaInsets();
+  const isReady = useRef(false);
   
   // 页面淡入
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -48,6 +53,9 @@ export default function SplashScreen() {
   const backgroundColor = '#FFFFFF';
 
   useEffect(() => {
+    // 隐藏原生启动屏
+    SplashScreen.hideAsync();
+    
     // 1. 页面淡入
     Animated.timing(fadeAnim, {
       toValue: 1,

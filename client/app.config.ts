@@ -1,71 +1,31 @@
-import { ExpoConfig, ConfigContext } from 'expo/config';
+import 'expo-router/entry';
+import { ExpoConfig, ConfigContext } from '@expo/config';
 
-const appName = process.env.COZE_PROJECT_NAME || process.env.EXPO_PUBLIC_COZE_PROJECT_NAME || '应用';
-const projectId = process.env.COZE_PROJECT_ID || process.env.EXPO_PUBLIC_COZE_PROJECT_ID;
-const slugAppName = projectId ? `app${projectId}` : 'myapp';
+export default ({ config }: { config: ExpoConfig }) => {
+  // 获取项目ID（如果存在）
+  const projectId = process.env.EAS_PROJECT_ID || config.extra?.eas?.projectId;
+  const packageName = projectId 
+    ? `com.anonymous.x${projectId.replace(/-/g, '').slice(0, 8)}`
+    : 'com.anonymous.x0';
 
-export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
-    "name": "每日申论",
-    "slug": slugAppName,
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": `com.anonymous.x${projectId || '0'}`,
-      "permissions": [
-        "INTERNET",
-        "ACCESS_NETWORK_STATE"
-      ]
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "single",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      process.env.EXPO_PUBLIC_BACKEND_BASE_URL ? [
-        "expo-router",
-        {
-          "origin": process.env.EXPO_PUBLIC_BACKEND_BASE_URL
-        }
-      ] : 'expo-router',
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": `允许申论每日App访问您的相册，以便您上传或保存图片。`,
-          "cameraPermission": `允许申论每日App使用您的相机，以便您直接拍摄照片上传。`,
-          "microphonePermission": `允许申论每日App访问您的麦克风，以便您拍摄带有声音的视频。`
-        }
+    android: {
+      ...config.android,
+      package: packageName,
+      permissions: [
+        'INTERNET',
+        'ACCESS_NETWORK_STATE'
       ],
-      [
-        "expo-location",
-        {
-          "locationWhenInUsePermission": `申论每日App需要访问您的位置以提供周边服务及导航功能。`
-        }
-      ],
-      [
-        "expo-camera",
-        {
-          "cameraPermission": `申论每日App需要访问相机以拍摄照片和视频。`,
-          "microphonePermission": `申论每日App需要访问麦克风以录制视频声音。`,
-          "recordAudioAndroid": true
-        }
-      ]
+    },
+    plugins: [
+      'expo-router',
+      'expo-splash-screen',
     ],
-    "experiments": {
-      "typedRoutes": true
-    }
-  }
-}
+    splash: {
+      image: './assets/images/icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#FFFFFF',
+    },
+  };
+};
