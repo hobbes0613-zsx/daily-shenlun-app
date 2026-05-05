@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, Dimensions, StyleSheet, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,20 +9,19 @@ SplashScreen.preventAutoHideAsync();
 
 const { width, height } = Dimensions.get('window');
 
-// 水滴最终停留位置（屏幕上方35%处）
-const DROP_TARGET_Y = height * 0.35;
+// 水滴最终停留位置（屏幕上方40%处）
+const DROP_TARGET_Y = height * 0.40;
 // 水面位置
-const WATER_SURFACE_Y = height * 0.38;
+const WATER_SURFACE_Y = height * 0.43;
 
 export default function SplashScreenPage() {
   const insets = useSafeAreaInsets();
-  const isReady = useRef(false);
   
   // 页面淡入
   const fadeAnim = useRef(new Animated.Value(0)).current;
   
   // 水滴属性
-  const dropY = useRef(new Animated.Value(-80)).current;
+  const dropY = useRef(new Animated.Value(-100)).current;
   const dropOpacity = useRef(new Animated.Value(1)).current;
   const dropScale = useRef(new Animated.Value(1)).current;
   
@@ -38,41 +37,44 @@ export default function SplashScreenPage() {
   const ripple3Scale = useRef(new Animated.Value(0)).current;
   const ripple3Opacity = useRef(new Animated.Value(0)).current;
   
-  // 水面波纹
+  // 水面波动
   const waterWave1 = useRef(new Animated.Value(0)).current;
   const waterWave2 = useRef(new Animated.Value(0)).current;
   
-  // 主题色（使用浅色主题确保可见性）
+  // 主题色
   const textColor = '#000000';
-  const mutedColor = '#6B7280';
+  const mutedColor = '#666666';
   const rippleColor = 'rgba(0, 0, 0, 0.3)';
   const rippleColorLight = 'rgba(0, 0, 0, 0.2)';
   const rippleColorOuter = 'rgba(0, 0, 0, 0.1)';
-  const waveColor = 'rgba(0, 0, 0, 0.1)';
-  const lineColor = '#D1D5DB';
+  const lineColor = '#CCCCCC';
   const backgroundColor = '#FFFFFF';
 
   useEffect(() => {
+    console.log('SplashScreenPage: Component mounted');
+    
     // 隐藏原生启动屏
-    SplashScreen.hideAsync();
+    SplashScreen.hideAsync().then(() => {
+      console.log('SplashScreenPage: Native splash hidden');
+    });
     
     // 1. 页面淡入
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 800,
+      duration: 500,
       easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     }).start();
 
-    // 2. 水滴下落（自然重力感）
+    // 2. 水滴下落
     Animated.timing(dropY, {
-      toValue: WATER_SURFACE_Y - 10,
+      toValue: DROP_TARGET_Y,
       duration: 2000,
       easing: Easing.bezier(0.2, 0.8, 0.2, 1),
       useNativeDriver: true,
     }).start();
 
-    // 3. 水面波动效果（持续）
+    // 3. 水面波动效果
     const wave1Loop = Animated.loop(
       Animated.sequence([
         Animated.timing(waterWave1, {
@@ -109,18 +111,20 @@ export default function SplashScreenPage() {
     );
     wave2Loop.start();
 
-    // 4. 水滴入水效果（2秒后触发）
+    // 4. 水滴入水效果
     const dropTimer = setTimeout(() => {
+      console.log('SplashScreenPage: Drop reached water');
+      
       // 水滴消失
       Animated.parallel([
         Animated.timing(dropOpacity, {
           toValue: 0,
-          duration: 150,
+          duration: 100,
           useNativeDriver: true,
         }),
         Animated.timing(dropScale, {
-          toValue: 1.5,
-          duration: 150,
+          toValue: 1.3,
+          duration: 100,
           useNativeDriver: true,
         }),
       ]).start();
@@ -143,7 +147,7 @@ export default function SplashScreenPage() {
         }),
       ]).start();
 
-      // 涟漪2（中圈，稍慢）
+      // 涟漪2（中圈）
       setTimeout(() => {
         ripple2Opacity.setValue(0.6);
         ripple2Scale.setValue(0.1);
@@ -163,7 +167,7 @@ export default function SplashScreenPage() {
         ]).start();
       }, 150);
 
-      // 涟漪3（外圈，最慢）
+      // 涟漪3（外圈）
       setTimeout(() => {
         ripple3Opacity.setValue(0.4);
         ripple3Scale.setValue(0.1);
@@ -185,10 +189,11 @@ export default function SplashScreenPage() {
 
     }, 2000);
 
-    // 5. 3.5秒后跳转
+    // 5. 跳转
     const jumpTimer = setTimeout(() => {
+      console.log('SplashScreenPage: Navigating to /home');
       router.replace('/home');
-    }, 3500);
+    }, 4000);
 
     return () => {
       clearTimeout(dropTimer);
@@ -244,7 +249,7 @@ export default function SplashScreenPage() {
         ]}
       />
 
-      {/* 涟漪3（外圈，最大） */}
+      {/* 涟漪3（外圈） */}
       <Animated.View
         style={[
           styles.ripple3,
@@ -270,7 +275,7 @@ export default function SplashScreenPage() {
         ]}
       />
 
-      {/* 涟漪1（内圈，最亮） */}
+      {/* 涟漪1（内圈） */}
       <Animated.View
         style={[
           styles.ripple1,
@@ -298,53 +303,19 @@ export default function SplashScreenPage() {
         ]}
       />
 
-      {/* 标题区域 - 放在屏幕下方 */}
+      {/* 标题区域 */}
       <View style={[styles.content, { paddingBottom: insets.bottom + 60 }]}>
-        {/* 上装饰线 */}
-        <View 
-          style={[
-            styles.decorLine,
-            { backgroundColor: lineColor }
-          ]}
-        />
-
-        {/* 标题 */}
-        <Text 
-          style={[
-            styles.title,
-            { color: textColor }
-          ]}
-        >
+        <View style={[styles.decorLine, { backgroundColor: lineColor }]} />
+        <Text style={[styles.title, { color: textColor }]}>
           每日申论
         </Text>
-
-        {/* 禅意诗句 */}
-        <Text 
-          style={[
-            styles.subtitle,
-            { color: mutedColor }
-          ]}
-        >
+        <Text style={[styles.subtitle, { color: mutedColor }]}>
           博观而约取 · 厚积而薄发
         </Text>
-
-        {/* 英文副标题 */}
-        <Text 
-          style={[
-            styles.englishSubtitle,
-            { color: mutedColor }
-          ]}
-        >
+        <Text style={[styles.englishSubtitle, { color: mutedColor }]}>
           Daily Shenlun
         </Text>
-
-        {/* 下装饰线 */}
-        <View 
-          style={[
-            styles.decorLine,
-            { backgroundColor: lineColor }
-          ]}
-        />
+        <View style={[styles.decorLine, { backgroundColor: lineColor }]} />
       </View>
     </View>
   );
@@ -379,7 +350,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     left: width / 2 - 30,
-    borderWidth: 1.5,
+    borderWidth: 2,
     backgroundColor: 'transparent',
   },
   ripple2: {
@@ -388,7 +359,7 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 45,
     left: width / 2 - 45,
-    borderWidth: 1,
+    borderWidth: 1.5,
     backgroundColor: 'transparent',
   },
   ripple3: {
