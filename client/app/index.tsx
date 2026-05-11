@@ -8,6 +8,7 @@ import * as SplashScreen from 'expo-splash-screen';
 SplashScreen.preventAutoHideAsync();
 
 const { width, height } = Dimensions.get('window');
+const VIDEO_HEIGHT = height * 0.65; // 视频占65%高度，底部35%显示文字
 
 // 视频URL（4秒水滴涟漪动画）
 const VIDEO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7631192723420282934/video/video_generate_cgt-20260511232545-2hgsw.mp4';
@@ -46,22 +47,21 @@ export default function SplashScreenPage() {
 
   return (
     <View style={styles.container}>
-      {/* 视频背景 */}
-      <Video
-        ref={videoRef}
-        source={{ uri: VIDEO_URL }}
-        style={styles.video}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay
-        isLooping={false}
-        onLoad={handleVideoLoad}
-        onError={handleVideoError}
-      />
+      {/* 视频区域 - 只占屏幕上半部分 */}
+      <View style={styles.videoContainer}>
+        <Video
+          ref={videoRef}
+          source={{ uri: VIDEO_URL }}
+          style={styles.video}
+          resizeMode={ResizeMode.CONTAIN}
+          shouldPlay
+          isLooping={false}
+          onLoad={handleVideoLoad}
+          onError={handleVideoError}
+        />
+      </View>
       
-      {/* 渐变遮罩层 */}
-      <View style={styles.overlay} />
-      
-      {/* 底部文字 */}
+      {/* 底部文字区域 */}
       <View style={styles.textContainer}>
         <View style={styles.line} />
         <Text style={styles.title}>每日申论</Text>
@@ -78,25 +78,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  video: {
-    position: 'absolute',
+  videoContainer: {
     width: '100%',
-    height: '100%',
-    top: 0,
-    left: 0,
+    height: VIDEO_HEIGHT,
+    backgroundColor: '#FFFFFF',
   },
-  overlay: {
-    position: 'absolute',
+  video: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   textContainer: {
-    position: 'absolute',
-    bottom: 60,
-    width: '100%',
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
   },
   line: {
     width: 60,
