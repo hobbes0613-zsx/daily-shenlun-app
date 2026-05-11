@@ -10,8 +10,8 @@ SplashScreen.preventAutoHideAsync();
 const { width, height } = Dimensions.get('window');
 const VIDEO_HEIGHT = height * 0.65; // 视频占65%高度，底部35%显示文字
 
-// 视频URL（4秒水滴涟漪动画）
-const VIDEO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7631192723420282934/video/video_generate_cgt-20260511232545-2hgsw.mp4';
+// 视频URL（4秒水滴涟漪动画 - 新版本）
+const VIDEO_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7631192723420282934/video/video_generate_cgt-20260511233156-vw7g4.mp4?sign=1810049598-b7d78e02cc-0-4944a237f1745f77d1cb9a9a7af86370f5d3d0cb4ed338f2c0ded50b8f9867d8';
 
 export default function SplashScreenPage() {
   const router = useRouter();
