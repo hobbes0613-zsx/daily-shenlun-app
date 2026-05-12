@@ -1,35 +1,69 @@
-import { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const SPLASH_IMAGE_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7631192723420282934/image/generate_image_c18cdf80-3d11-4284-915f-da3d90e770c3.jpeg';
+const SPLASH_IMAGE_URL = 'https://coze-coding-project.tos.coze.site/coze_storage_7631192723420282934/image/generate_image_1a0aa5e5-8658-4406-b1e8-b3c91819cc78.jpeg?sign=1810082140-1438ca49e8-0-fae33bd32ec0bfe37387691872283404917f19f1dfa7766a6038742d29df81a2';
 
-export default function SplashScreen() {
+export default function SplashScreenPage() {
   const router = useRouter();
-  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const [isReady, setIsReady] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    // 3秒后跳转到首页
-    const timer = setTimeout(() => {
-      router.replace('/home');
-    }, 3000);
+    // 防止原生启动屏自动隐藏
+    SplashScreen.preventAutoHideAsync()
+      .then(() => setIsReady(true))
+      .catch(() => setIsReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    // 延迟2秒后隐藏原生启动屏并跳转
+    const timer = setTimeout(async () => {
+      try {
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        // 忽略错误
+      }
+      
+      // 再延迟0.5秒显示自定义启动页，然后跳转
+      setTimeout(() => {
+        router.replace('/home');
+      }, 500);
+    }, 2000);
 
     return () => clearTimeout(timer);
-  }, [router]);
+  }, [isReady, router]);
+
+  // 如果还没准备好，显示加载指示器
+  if (!isReady) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#333333" />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {/* 背景图片 */}
-      <Image
-        source={{ uri: SPLASH_IMAGE_URL }}
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      />
+      {!imageError ? (
+        <Image
+          source={{ uri: SPLASH_IMAGE_URL }}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        /* 如果图片加载失败，显示纯色背景 */
+        <View style={styles.fallbackBackground} />
+      )}
 
       {/* 底部渐变遮罩 */}
       <View style={styles.gradientOverlay} />
@@ -47,6 +81,12 @@ export default function SplashScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
@@ -57,6 +97,14 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT,
     top: 0,
     left: 0,
+  },
+  fallbackBackground: {
+    position: 'absolute',
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    top: 0,
+    left: 0,
+    backgroundColor: '#f5f5f5',
   },
   gradientOverlay: {
     position: 'absolute',
