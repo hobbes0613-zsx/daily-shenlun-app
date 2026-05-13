@@ -27,5 +27,11 @@ export default ({ config }: { config: ExpoConfig }) => {
       resizeMode: 'contain',
       backgroundColor: '#FFFFFF',
     },
+    extra: {
+      eas: {
+        projectId: 'b33c8d6d-db8c-43d8-87be-17e489e3c259',
+      },
+      backendUrl: 'https://daily-shenlun-app-production.up.railway.app',
+    },
   };
 };

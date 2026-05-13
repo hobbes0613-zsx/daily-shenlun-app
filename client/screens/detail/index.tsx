@@ -4,6 +4,20 @@ import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { Screen } from '@/components/Screen';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { quoteService } from '@/services/quoteService';
+import Constants from 'expo-constants';
+
+// 获取后端URL
+const getBackendUrl = () => {
+  // 优先使用环境变量
+  if (process.env.EXPO_PUBLIC_BACKEND_BASE_URL) {
+    return process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+  }
+  // 沙箱中使用Constants
+  if (Constants.expoConfig?.extra?.backendUrl) {
+    return Constants.expoConfig.extra.backendUrl;
+  }
+  return 'https://daily-shenlun-app-production.up.railway.app';
+};
 
 interface News {
   id: number;
@@ -42,7 +56,7 @@ export default function DetailScreen() {
 
   const fetchNewsDetail = async (newsId: number) => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/news/${newsId}`);
+      const response = await fetch(`${getBackendUrl()}/api/v1/news/${newsId}`);
       const data = await response.json();
       setNews(data.data || null);
     } catch (error) {
@@ -58,7 +72,7 @@ export default function DetailScreen() {
     setGenerating(true);
     try {
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/news/${news.id}/generate`,
+        `${getBackendUrl()}/api/v1/news/${news.id}/generate`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
