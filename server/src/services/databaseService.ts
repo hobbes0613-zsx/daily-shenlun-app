@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { News } from '../types/news.js';
+import type { News } from '../types/news';
 
 /**
  * 数据库服务 - 用于持久化存储新闻数据

@@ -1,5 +1,5 @@
-import { News } from "../types/news.js";
-import { databaseService } from "./databaseService.js";
+import { News } from "../types/news";
+import { databaseService } from "./databaseService";
 
 export class NewsService {
   private newsData: News[] = [];
