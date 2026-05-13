@@ -1,4 +1,4 @@
-export interface News {
+export type News = {
   id: number;
   date: string;
   title: string;
@@ -7,13 +7,13 @@ export interface News {
   question?: string;
   answer?: string;
   created_at?: string;
-}
+};
 
-export interface GenerateRequest {
+export type GenerateRequest = {
   newsId: number;
-}
+};
 
-export interface GenerateResponse {
+export type GenerateResponse = {
   question: string;
   answer: string;
-}
+};
