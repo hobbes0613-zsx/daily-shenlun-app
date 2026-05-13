@@ -1,4 +1,14 @@
-import { News } from "../types/news";
+// 内联类型定义，绕过 ES Module 导出问题
+interface News {
+  id: number;
+  date: string;
+  title: string;
+  summary: string;
+  importance: number;
+  question: string;
+  answer: string;
+}
+
 import { databaseService } from "./databaseService";
 
 export class NewsService {
